@@ -1,0 +1,7 @@
+[build]
+  command = "npm run build"
+
+# Netlify detecta Next.js automáticamente y aplica su runtime (App Router, Route
+# Handlers como funciones, etc.) sin configuración adicional. Netlify Blobs se
+# resuelve solo en tiempo de ejecución (ver lib/store.ts) tanto en `netlify dev`
+# como una vez desplegado.
