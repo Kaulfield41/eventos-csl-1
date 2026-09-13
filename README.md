@@ -26,7 +26,11 @@ generación del `.4ss`.
    `app/api/emparejar/route.ts`).
 4. Opcionalmente se inserta una página separadora (`<placeholder>`) entre cada momento
    del evento (Entrada, Ofertorio...); esta preferencia también se recuerda.
-5. Se genera el `.4ss` (`lib/forscore.ts`) con los PDF embebidos en base64 — un único
+5. La primera página del setlist es siempre un PDF-resumen de la ficha generado por la
+   app (`lib/ficha-pdf.ts`, con el título, fecha, hora, parroquia, momentos/obras e
+   intérpretes) — no es una réplica visual del Word original, pero da la misma
+   referencia rápida sin depender de convertir `.docx` a PDF.
+6. Se genera el `.4ss` (`lib/forscore.ts`) con los PDF embebidos en base64 — un único
    archivo que, al abrirlo en forScore, trae ya todo.
 
 ### Dos modos de biblioteca de partituras
@@ -76,9 +80,11 @@ No hay todavía suite de tests automatizada; estos scripts sirven para verificar
 las partes que no dependen de Netlify/Claude:
 
 ```bash
-npx tsx scripts/test-docx.ts "ruta/a/una/ficha.docx"   # extracción de texto de .docx
-npx tsx scripts/test-doc.ts "ruta/a/una/ficha.doc"     # extracción de texto de .doc antiguos
-npx tsx scripts/test-matching.ts                        # emparejamiento obra -> partitura y XML .4ss
+npx tsx scripts/test-docx.ts "ruta/a/una/ficha.docx"     # extracción de texto de .docx
+npx tsx scripts/test-doc.ts "ruta/a/una/ficha.doc"       # extracción de texto de .doc antiguos
+npx tsx scripts/test-matching.ts                          # emparejamiento obra -> partitura y XML .4ss
+npx tsx scripts/test-cabecera.ts "ruta/a/una/ficha.docx" # tipo_evento/fecha/hora extraídos de la cabecera
+npx tsx scripts/test-ficha-pdf.ts "ruta/a/una/ficha.docx" # genera el PDF-resumen de una ficha real
 ```
 
 ## Estado y roadmap

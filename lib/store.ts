@@ -63,6 +63,12 @@ export async function guardarDecision(
   await storeDecisiones().setJSON(clave, decision);
 }
 
+/** Olvida la decisión guardada para una obra: la próxima vez se trata como nueva. */
+export async function borrarDecision(titulo: string, compositor: string | null): Promise<void> {
+  const clave = claveObra(titulo, compositor);
+  await storeDecisiones().delete(clave);
+}
+
 export async function obtenerPreferencias(): Promise<Preferencias> {
   const valor = await storePreferencias().get("global", { type: "json" });
   return { ...PREFERENCIAS_POR_DEFECTO, ...((valor as Partial<Preferencias>) ?? {}) };

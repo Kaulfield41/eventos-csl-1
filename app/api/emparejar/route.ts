@@ -1,5 +1,5 @@
 import { resolverMatch, type ArchivoPartitura } from "@/lib/matching";
-import { obtenerDecision, guardarDecision } from "@/lib/store";
+import { obtenerDecision, guardarDecision, borrarDecision } from "@/lib/store";
 
 export const runtime = "nodejs";
 
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   return Response.json({ resultados });
 }
 
-/** Guarda (o borra) la decisión de "recordar esta elección" para una obra concreta. */
+/** Guarda la decisión de "recordar esta elección" para una obra concreta. */
 export async function PUT(request: Request) {
   const body = (await request.json()) as {
     titulo: string;
@@ -41,5 +41,12 @@ export async function PUT(request: Request) {
     archivoNombre: string | null;
   };
   await guardarDecision(body.titulo, body.compositor, { archivoNombre: body.archivoNombre });
+  return Response.json({ ok: true });
+}
+
+/** Olvida la decisión guardada de una obra (al desmarcar "fijar esta partitura"). */
+export async function DELETE(request: Request) {
+  const body = (await request.json()) as { titulo: string; compositor: string | null };
+  await borrarDecision(body.titulo, body.compositor);
   return Response.json({ ok: true });
 }

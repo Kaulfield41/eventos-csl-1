@@ -37,6 +37,7 @@ export type MomentoExtraido = z.infer<typeof MomentoExtraidoSchema>;
 export const EventoExtraidoSchema = z.object({
   tipo_evento: z.string().nullable().describe("Ej. 'Boda', 'Funeral', 'Comunión'."),
   fecha: z.string().nullable().describe("Fecha del evento en formato ISO (YYYY-MM-DD)."),
+  hora: z.string().nullable().describe("Hora del evento en formato HH:MM (24h), ej. '18:30'. null si no se indica."),
   parroquia: z
     .string()
     .nullable()

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { EventoExtraido } from "@/lib/models";
 import type { ResultadoMatch, CandidatoMatch } from "@/lib/matching";
 import { construir4ss, type EntradaSetlist } from "@/lib/forscore";
+import { construirFichaPdf, tituloEvento } from "@/lib/ficha-pdf";
 import {
   soportaFileSystemAccess,
   recuperarCarpetaGuardada,
@@ -11,6 +12,7 @@ import {
   elegirCarpeta,
   listarPdfs,
   leerPdfComoBase64,
+  bytesABase64,
 } from "@/lib/browser-fs";
 
 type Modo = "local" | "nube";
@@ -37,11 +39,6 @@ function descargarTexto(contenido: string, nombreArchivo: string, tipo: string) 
   enlace.click();
   enlace.remove();
   URL.revokeObjectURL(url);
-}
-
-function tituloSetlist(evento: EventoExtraido): string {
-  const partes = [evento.tipo_evento, evento.fecha, evento.parroquia].filter(Boolean);
-  return partes.length ? partes.join(" - ") : "Setlist";
 }
 
 export default function Home() {
@@ -127,7 +124,7 @@ export default function Home() {
         if (resultado.tipo === "automatico") archivoSeleccionado = resultado.archivo.nombre;
         else if (resultado.tipo === "recordado") archivoSeleccionado = resultado.archivo?.nombre ?? null;
         else if (resultado.tipo === "ambiguo") archivoSeleccionado = resultado.candidatos[0]?.archivo.nombre ?? null;
-        return { ...obras[i], resultado, archivoSeleccionado, recordar: false };
+        return { ...obras[i], resultado, archivoSeleccionado, recordar: resultado.tipo === "recordado" };
       }
     );
     setFilas(nuevasFilas);
@@ -186,22 +183,34 @@ export default function Home() {
     }
   }
 
+  async function guardarDecisionSiFija(fila: FilaObra, archivoNombre: string | null) {
+    await fetch("/api/emparejar", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titulo: fila.titulo, compositor: fila.compositor, archivoNombre }),
+    });
+  }
+
   async function onCambiarSeleccion(indice: number, archivoNombre: string | null) {
     setFilas((prev) => prev.map((f, i) => (i === indice ? { ...f, archivoSeleccionado: archivoNombre } : f)));
+    // Si esta obra ya estaba "fijada", la elección guardada tiene que seguir el cambio,
+    // o se quedaría apuntando a la partitura anterior sin que se note.
+    const fila = filas[indice];
+    if (fila?.recordar) await guardarDecisionSiFija(fila, archivoNombre);
   }
 
   async function onCambiarRecordar(indice: number, recordar: boolean) {
     const fila = filas[indice];
     setFilas((prev) => prev.map((f, i) => (i === indice ? { ...f, recordar } : f)));
     if (recordar) {
+      await guardarDecisionSiFija(fila, fila.archivoSeleccionado);
+    } else {
+      // Desmarcar "fijar" debe olvidar de verdad la decisión guardada, no solo dejar de
+      // sincronizarla — si no, la próxima vez que aparezca esta obra se seguiría aplicando.
       await fetch("/api/emparejar", {
-        method: "PUT",
+        method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          titulo: fila.titulo,
-          compositor: fila.compositor,
-          archivoNombre: fila.archivoSeleccionado,
-        }),
+        body: JSON.stringify({ titulo: fila.titulo, compositor: fila.compositor }),
       });
     }
   }
@@ -211,7 +220,7 @@ export default function Home() {
     setError(null);
     setCargando("Generando la setlist para forScore...");
     try {
-      const titulo = tituloSetlist(evento);
+      const titulo = tituloEvento(evento);
       const entradasPeticion: { tipo: "obra" | "separador"; titulo: string; archivoNombre?: string | null }[] = [];
       let ultimoMomento: string | null = null;
       for (const fila of filas) {
@@ -226,7 +235,7 @@ export default function Home() {
         const respuesta = await fetch("/api/setlist", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ titulo, entradas: entradasPeticion }),
+          body: JSON.stringify({ evento, entradas: entradasPeticion }),
         });
         if (!respuesta.ok) throw new Error((await respuesta.json()).error ?? "Error generando la setlist.");
         const xml = await respuesta.text();
@@ -234,6 +243,16 @@ export default function Home() {
       } else {
         if (!carpetaHandle) throw new Error("Elige primero la carpeta de partituras.");
         const entradas: EntradaSetlist[] = [];
+
+        // La ficha-resumen va siempre primera, antes que cualquier momento u obra.
+        const fichaPdf = await construirFichaPdf(evento);
+        entradas.push({
+          tipo: "obra",
+          titulo: "Ficha del evento",
+          nombreArchivo: "Ficha del evento.pdf",
+          datosBase64: bytesABase64(fichaPdf),
+        });
+
         for (const entrada of entradasPeticion) {
           if (entrada.tipo === "separador") {
             entradas.push({ tipo: "separador", titulo: entrada.titulo });
@@ -403,41 +422,148 @@ function FilaObraUI({
 
   return (
     <div className={`flex flex-col gap-1 rounded border p-2 text-sm ${esAmbiguo || sinMatch ? "border-amber-400" : ""}`}>
-      <div className="flex items-center justify-between gap-2">
-        <span>
+      <div className="flex items-start justify-between gap-2">
+        <span className="min-w-0 break-words">
           {fila.titulo}
           {fila.compositor ? ` — ${fila.compositor}` : ""}
         </span>
-        <span className="text-xs opacity-60">
+        <span className="shrink-0 whitespace-nowrap text-xs opacity-60">
           {fila.resultado.tipo === "automatico" && "coincidencia automática"}
           {fila.resultado.tipo === "recordado" && "elección recordada"}
           {fila.resultado.tipo === "ambiguo" && "varias posibles — elige una"}
           {fila.resultado.tipo === "sin_match" && "sin partitura encontrada"}
         </span>
       </div>
-      <div className="flex items-center gap-3">
-        <select
-          className="border rounded px-2 py-1 flex-1"
-          value={fila.archivoSeleccionado ?? ""}
-          onChange={(e) => onCambiarSeleccion(e.target.value || null)}
-        >
-          <option value="">— No adjuntar ninguna partitura —</option>
-          {(esAmbiguo ? candidatos.map((c) => c.archivo.nombre) : archivosBiblioteca).map((nombre) => (
-            <option key={nombre} value={nombre}>
-              {nombre}
-            </option>
-          ))}
-          {!esAmbiguo &&
-            fila.archivoSeleccionado &&
-            !archivosBiblioteca.includes(fila.archivoSeleccionado) && (
-              <option value={fila.archivoSeleccionado}>{fila.archivoSeleccionado}</option>
-            )}
-        </select>
-        <label className="flex items-center gap-1 whitespace-nowrap text-xs">
+      <div className="flex flex-wrap items-center gap-3">
+        <BuscadorPartitura
+          valor={fila.archivoSeleccionado}
+          candidatos={candidatos}
+          archivosBiblioteca={archivosBiblioteca}
+          onCambiar={onCambiarSeleccion}
+        />
+        <label className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs">
           <input type="checkbox" checked={fila.recordar} onChange={(e) => onCambiarRecordar(e.target.checked)} />
-          recordar para la próxima vez
+          fijar esta partitura para esta obra siempre
         </label>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Buscador con autocompletado para elegir la partitura de una obra. Sustituye a un
+ * <select> normal porque con bibliotecas de cientos de PDF (ej. las 439 partituras
+ * reales de Alborada) un desplegable nativo es inmanejable — aquí se escribe y filtra
+ * al momento, con "ninguna partitura" siempre disponible arriba del todo.
+ */
+function BuscadorPartitura({
+  valor,
+  candidatos,
+  archivosBiblioteca,
+  onCambiar,
+}: {
+  valor: string | null;
+  candidatos: CandidatoMatch[];
+  archivosBiblioteca: string[];
+  onCambiar: (nombre: string | null) => void;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const [texto, setTexto] = useState(valor ?? "");
+  // Sincroniza el texto mostrado con `valor` cuando cambia desde fuera (patrón de React
+  // para "ajustar el estado cuando cambia una prop", hecho durante el render en vez de
+  // en un efecto: https://react.dev/learn/you-might-not-need-an-effect).
+  const [ultimoValor, setUltimoValor] = useState(valor);
+  if (valor !== ultimoValor) {
+    setUltimoValor(valor);
+    setTexto(valor ?? "");
+  }
+  const contenedorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function alPulsarFuera(e: MouseEvent) {
+      if (contenedorRef.current && !contenedorRef.current.contains(e.target as Node)) {
+        setAbierto(false);
+        setTexto(valor ?? "");
+      }
+    }
+    document.addEventListener("mousedown", alPulsarFuera);
+    return () => document.removeEventListener("mousedown", alPulsarFuera);
+  }, [valor]);
+
+  function elegir(nombre: string | null) {
+    onCambiar(nombre);
+    setTexto(nombre ?? "");
+    setAbierto(false);
+  }
+
+  const filtro = texto.trim().toLowerCase();
+  const nombresSugeridos = new Set(candidatos.map((c) => c.archivo.nombre));
+  const resto = archivosBiblioteca.filter((n) => !nombresSugeridos.has(n)).sort();
+  const filtrar = (lista: string[]) => (filtro ? lista.filter((n) => n.toLowerCase().includes(filtro)) : lista);
+  const sugeridasFiltradas = filtrar(candidatos.map((c) => c.archivo.nombre));
+  const restoFiltrado = filtrar(resto);
+
+  return (
+    <div className="relative min-w-0 flex-1" ref={contenedorRef}>
+      <input
+        className="border rounded px-2 py-1 w-full"
+        placeholder="— Ninguna partitura — (escribe para buscar)"
+        value={texto}
+        onFocus={() => setAbierto(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            setAbierto(false);
+            setTexto(valor ?? "");
+          }
+        }}
+        onChange={(e) => {
+          setTexto(e.target.value);
+          setAbierto(true);
+        }}
+      />
+      {abierto && (
+        <div className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded border bg-[var(--background)] text-[var(--foreground)] shadow-lg">
+          <button
+            type="button"
+            className="block w-full break-words text-left px-2 py-1 italic opacity-70 hover:bg-black/5"
+            onClick={() => elegir(null)}
+          >
+            — No adjuntar ninguna partitura —
+          </button>
+          {sugeridasFiltradas.length > 0 && (
+            <>
+              <div className="px-2 pt-1 text-[10px] font-semibold uppercase tracking-wide opacity-50">Sugeridas</div>
+              {sugeridasFiltradas.map((nombre) => (
+                <button
+                  key={nombre}
+                  type="button"
+                  className="block w-full break-words text-left px-2 py-1 hover:bg-black/5"
+                  onClick={() => elegir(nombre)}
+                >
+                  {nombre}
+                </button>
+              ))}
+            </>
+          )}
+          <div className="px-2 pt-1 text-[10px] font-semibold uppercase tracking-wide opacity-50">
+            {sugeridasFiltradas.length > 0 ? "Resto de la biblioteca" : "Biblioteca"}
+          </div>
+          {restoFiltrado.length === 0 ? (
+            <div className="px-2 py-1 italic opacity-50">Sin resultados</div>
+          ) : (
+            restoFiltrado.map((nombre) => (
+              <button
+                key={nombre}
+                type="button"
+                className="block w-full break-words text-left px-2 py-1 hover:bg-black/5"
+                onClick={() => elegir(nombre)}
+              >
+                {nombre}
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

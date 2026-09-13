@@ -66,9 +66,9 @@ export default function Biblioteca() {
 
       <ul className="flex flex-col gap-1 text-sm">
         {archivos.map((a) => (
-          <li key={a.nombre} className="flex items-center justify-between border-b py-1">
-            <span>{a.nombre}</span>
-            <div className="flex items-center gap-3 opacity-70">
+          <li key={a.nombre} className="flex items-start justify-between gap-2 border-b py-1">
+            <span className="min-w-0 break-words">{a.nombre}</span>
+            <div className="flex shrink-0 items-center gap-3 whitespace-nowrap opacity-70">
               <span>{(a.tamano / 1024).toFixed(0)} KB</span>
               <button onClick={() => onBorrar(a.nombre)} className="text-red-600 hover:underline">
                 Borrar

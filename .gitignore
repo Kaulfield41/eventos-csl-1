@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local Netlify folder
+.netlify
+
+# Generado por `netlify dev` (runtime Deno de las edge functions), no aporta nada versionado
+deno.lock

@@ -1,5 +1,7 @@
 import { construir4ss, type EntradaSetlist } from "@/lib/forscore";
+import { construirFichaPdf, tituloEvento } from "@/lib/ficha-pdf";
 import { obtenerPartituraCloud } from "@/lib/store";
+import type { EventoExtraido } from "@/lib/models";
 
 export const runtime = "nodejs";
 
@@ -16,9 +18,20 @@ interface EntradaPeticion {
  * porque los PDFs nunca salen del equipo del usuario.
  */
 export async function POST(request: Request) {
-  const body = (await request.json()) as { titulo: string; entradas: EntradaPeticion[] };
+  const body = (await request.json()) as { evento: EventoExtraido; entradas: EntradaPeticion[] };
+  const titulo = tituloEvento(body.evento);
 
   const entradas: EntradaSetlist[] = [];
+
+  // La ficha-resumen va siempre primera, antes que cualquier momento u obra.
+  const fichaPdf = await construirFichaPdf(body.evento);
+  entradas.push({
+    tipo: "obra",
+    titulo: "Ficha del evento",
+    nombreArchivo: "Ficha del evento.pdf",
+    datosBase64: Buffer.from(fichaPdf).toString("base64"),
+  });
+
   for (const entrada of body.entradas) {
     if (entrada.tipo === "separador") {
       entradas.push({ tipo: "separador", titulo: entrada.titulo });
@@ -40,8 +53,8 @@ export async function POST(request: Request) {
     });
   }
 
-  const xml = construir4ss(body.titulo, entradas);
-  const nombreArchivo = `${body.titulo.replace(/[\\/:*?"<>|]/g, "_")}.4ss`;
+  const xml = construir4ss(titulo, entradas);
+  const nombreArchivo = `${titulo.replace(/[\\/:*?"<>|]/g, "_")}.4ss`;
 
   return new Response(xml, {
     headers: {

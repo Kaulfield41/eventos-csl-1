@@ -71,15 +71,18 @@ export async function listarPdfs(handle: FileSystemDirectoryHandle): Promise<str
   return nombres.sort();
 }
 
-export async function leerPdfComoBase64(handle: FileSystemDirectoryHandle, nombre: string): Promise<string> {
-  const fileHandle = await handle.getFileHandle(nombre);
-  const file = await fileHandle.getFile();
-  const buffer = await file.arrayBuffer();
+export function bytesABase64(bytes: Uint8Array): string {
   let binario = "";
-  const bytes = new Uint8Array(buffer);
   const CHUNK = 0x8000;
   for (let i = 0; i < bytes.length; i += CHUNK) {
     binario += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
   }
   return btoa(binario);
+}
+
+export async function leerPdfComoBase64(handle: FileSystemDirectoryHandle, nombre: string): Promise<string> {
+  const fileHandle = await handle.getFileHandle(nombre);
+  const file = await fileHandle.getFile();
+  const buffer = await file.arrayBuffer();
+  return bytesABase64(new Uint8Array(buffer));
 }

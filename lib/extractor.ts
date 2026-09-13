@@ -27,7 +27,11 @@ con distinta ortografía). Normaliza SIEMPRE el compositor a su nombre completo 
 (ver descripción del campo), para que la misma persona real quede siempre escrita igual entre fichas.
 
 Separa siempre la parroquia/iglesia de la localidad en dos campos distintos (parroquia y población), \
-aunque en el texto original aparezcan juntas separadas por comas.`;
+aunque en el texto original aparezcan juntas separadas por comas.
+
+Extrae también la hora del evento (ej. de 'Hora de la Boda: 18:30h') en formato HH:MM; si hay varias \
+horas en la cabecera (como una hora de cita/llegada distinta de la hora del propio evento), usa la del \
+evento en sí, no la de cita.`;
 
 export class ExtraccionFallidaError extends Error {}
 
