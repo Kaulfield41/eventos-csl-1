@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
   return new Response(xml, {
     headers: {
-      "Content-Type": "application/xml",
+      "Content-Type": "application/octet-stream",
       "Content-Disposition": `attachment; filename="${nombreArchivo}"`,
     },
   });

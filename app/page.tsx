@@ -240,7 +240,7 @@ export default function Home() {
         });
         if (!respuesta.ok) throw new Error((await respuesta.json()).error ?? "Error generando la setlist.");
         const xml = await respuesta.text();
-        descargarTexto(xml, `${titulo.replace(/[\\/:*?"<>|]/g, "_")}.4ss`, "application/xml");
+        descargarTexto(xml, `${titulo.replace(/[\\/:*?"<>|]/g, "_")}.4ss`, "application/octet-stream");
       } else {
         if (!carpetaHandle) throw new Error("Elige primero la carpeta de partituras.");
         const entradas: EntradaSetlist[] = [];
@@ -264,7 +264,7 @@ export default function Home() {
           entradas.push({ tipo: "obra", titulo: entrada.titulo, nombreArchivo: entrada.archivoNombre, datosBase64 });
         }
         const xml = construir4ss(titulo, entradas);
-        descargarTexto(xml, `${titulo.replace(/[\\/:*?"<>|]/g, "_")}.4ss`, "application/xml");
+        descargarTexto(xml, `${titulo.replace(/[\\/:*?"<>|]/g, "_")}.4ss`, "application/octet-stream");
       }
     } catch (e) {
       setError((e as Error).message);
