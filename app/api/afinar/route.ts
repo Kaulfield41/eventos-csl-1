@@ -1,5 +1,4 @@
 import { extraerEvento, ExtraccionFallidaError } from "@/lib/extractor";
-import { guardarEventoHistorial } from "@/lib/store";
 
 export const runtime = "nodejs";
 
@@ -10,7 +9,7 @@ export const runtime = "nodejs";
  * la lectura del .docx/.doc.
  */
 export async function POST(request: Request) {
-  const body = (await request.json()) as { texto: string; nombreArchivo?: string };
+  const body = (await request.json()) as { texto: string };
 
   if (!body.texto?.trim()) {
     return Response.json({ error: "Falta el texto de la ficha a afinar." }, { status: 400 });
@@ -25,7 +24,6 @@ export async function POST(request: Request) {
 
   try {
     const evento = await extraerEvento(body.texto);
-    await guardarEventoHistorial(body.nombreArchivo ?? "(afinado con IA)", evento);
     return Response.json({ evento, metodo: "ia" });
   } catch (error) {
     if (error instanceof ExtraccionFallidaError) {

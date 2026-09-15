@@ -6,8 +6,8 @@ import type { EventoExtraido, MomentoExtraido, ObraExtraida } from "./models";
  * (b) las líneas de obra casi siempre llevan comillas y/o una coma antes del compositor.
  *
  * No pretende ser tan fiable como la extracción con Claude (lib/extractor.ts) — en
- * particular, no normaliza compositores (útil para las estadísticas) y falla en líneas
- * atípicas — pero permite un primer emparejamiento obra→partitura sin ningún coste ni
+ * particular, no normaliza compositores y falla en líneas atípicas — pero permite un
+ * primer emparejamiento obra→partitura sin ningún coste ni
  * dependencia externa, apoyándose en que la persona revisa y confirma cada partitura
  * antes de generar la setlist.
  */

@@ -53,7 +53,6 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [textoFicha, setTextoFicha] = useState<string | null>(null);
-  const [nombreFicha, setNombreFicha] = useState<string | null>(null);
   const [metodoExtraccion, setMetodoExtraccion] = useState<"heuristico" | "ia" | null>(null);
   const [bibliotecaLista, setBibliotecaLista] = useState(false);
   const [restauracionLista, setRestauracionLista] = useState(false);
@@ -163,7 +162,6 @@ export default function Home() {
         const pendiente = respuesta.pendiente as { evento: EventoExtraido; texto: string; archivoOrigen: string };
         setEvento(pendiente.evento);
         setTextoFicha(pendiente.texto);
-        setNombreFicha(pendiente.archivoOrigen);
         setMetodoExtraccion("heuristico");
         const obras: ObraConMomento[] = pendiente.evento.momentos.flatMap((m) =>
           m.obras.map((o) => ({ momento: m.nombre, titulo: o.titulo, compositor: o.compositor }))
@@ -189,7 +187,6 @@ export default function Home() {
     setFilas([]);
     setTextoFicha(null);
     setMetodoExtraccion(null);
-    setNombreFicha(file.name);
     setCargando("Leyendo la ficha y extrayendo el programa (sin IA, por reglas)...");
     try {
       const formData = new FormData();
@@ -219,7 +216,7 @@ export default function Home() {
       const respuesta = await fetch("/api/afinar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texto: textoFicha, nombreArchivo: nombreFicha }),
+        body: JSON.stringify({ texto: textoFicha }),
       }).then((r) => r.json());
       if (respuesta.error) throw new Error(respuesta.error);
       setEvento(respuesta.evento as EventoExtraido);

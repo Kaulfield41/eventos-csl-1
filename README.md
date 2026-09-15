@@ -52,8 +52,8 @@ cp .env.example .env
 ```
 
 Este proyecto usa **Netlify Blobs** para guardar las decisiones de emparejamiento
-recordadas, las preferencias, la biblioteca en la nube y el historial de eventos (ver
-"Estado" más abajo sobre por qué se eligió Blobs en vez de una base de datos aparte).
+recordadas, las preferencias y la biblioteca en la nube (ver "Estado" más abajo sobre
+por qué se eligió Blobs en vez de una base de datos aparte).
 Blobs necesita ejecutarse con contexto de Netlify, así que en local se usa la CLI de
 Netlify en vez de `next dev` a secas:
 
@@ -113,7 +113,8 @@ explícita para más adelante:
 
 - **Multi-cliente**: login, biblioteca y preferencias aisladas por cliente, pensado para
   vender la app a otras empresas de música.
-- Migrar de Netlify Blobs a Netlify DB (Postgres) si el historial de eventos crece
-  mucho o hacen falta consultas más ricas en la pantalla de estadísticas.
 - Generar y subir el `.4ss` automáticamente (sin cola de revisión) cuando todas las
   obras de una ficha detectada por correo ya tengan partitura fijada de antemano.
+- Guardar decisiones/preferencias en el navegador (en vez de Netlify Blobs) cuando se
+  usa el modo "carpeta local", para poder compartir la misma URL con otra persona sin
+  mezclar sus decisiones con las tuyas.

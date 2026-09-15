@@ -1,7 +1,6 @@
 import { extraerTextoDocx } from "@/lib/docx";
 import { extraerTextoDoc } from "@/lib/doc-legacy";
 import { extraerEventoHeuristico } from "@/lib/extractor-heuristico";
-import { guardarEventoHistorial } from "@/lib/store";
 
 export const runtime = "nodejs";
 
@@ -42,7 +41,6 @@ export async function POST(request: Request) {
   }
 
   const evento = extraerEventoHeuristico(texto);
-  await guardarEventoHistorial(nombre, evento);
 
   return Response.json({ texto, evento, metodo: "heuristico" });
 }
