@@ -183,7 +183,9 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!pendienteId || !bibliotecaLista || pendienteCargado.current) return;
+    // Los pendientes son fichas reales detectadas por correo (datos del negocio): un
+    // invitado no debe poder cargar una aunque conozca o adivine el id por la URL.
+    if (!pendienteId || !bibliotecaLista || !dueno || pendienteCargado.current) return;
     pendienteCargado.current = true;
     (async () => {
       setError(null);
@@ -210,7 +212,7 @@ export default function Home() {
     // incluirla en las dependencias causaría un bucle, y ya se controla con el ref
     // pendienteCargado que esto se ejecute una sola vez por pendiente.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendienteId, bibliotecaLista]);
+  }, [pendienteId, bibliotecaLista, dueno]);
 
   async function onSubirFicha(file: File) {
     setError(null);
@@ -363,8 +365,10 @@ export default function Home() {
       }
 
       // Si esta ficha venía de "Pendientes" (detectada por correo), al confirmarla
-      // generando la setlist desaparece de la cola.
-      if (pendienteId) {
+      // generando la setlist desaparece de la cola. Solo el dueño puede llegar aquí con
+      // un pendienteId real (ver el efecto que lo carga), pero se repite la comprobación
+      // por si alguien añade ?pendiente=<id> a mano sin haber cargado nada de verdad.
+      if (pendienteId && dueno) {
         await fetch(`/api/pendientes/${pendienteId}`, { method: "DELETE" });
         // Quita "?pendiente=..." de la URL: si no, un refresco posterior intenta
         // recargar un pendiente que ya no existe y muestra un error falso.
