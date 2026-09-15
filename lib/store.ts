@@ -1,6 +1,7 @@
 import { getStore } from "@netlify/blobs";
 import { claveObra } from "./models";
 import type { EventoExtraido } from "./models";
+import type { Credentials } from "google-auth-library";
 
 /**
  * Persistencia con Netlify Blobs. Se eligió en vez de aprovisionar ya una base de datos
@@ -173,4 +174,89 @@ export async function listarEventosHistorial(): Promise<EventoHistorial[]> {
     blobs.map(async (b) => (await storeEventos().get(b.key, { type: "json" })) as EventoHistorial)
   );
   return registros.filter(Boolean).sort((a, b) => a.importadoEn.localeCompare(b.importadoEn));
+}
+
+// ---------------------------------------------------------------------------
+// Agente de correo (Fase 2): conexión con Gmail, mensajes ya procesados, y la
+// cola de "pendientes de revisar" que genera la función programada.
+// ---------------------------------------------------------------------------
+
+function storeCorreoConfig() {
+  return getStore("alborada-correo-config");
+}
+
+function storeCorreoMensajesProcesados() {
+  return getStore("alborada-correo-mensajes-procesados");
+}
+
+function storePendientes() {
+  return getStore("alborada-pendientes");
+}
+
+export interface ConfiguracionCorreo {
+  tokens: Credentials;
+  cuenta: string | null;
+  etiquetaId: string | null;
+  etiquetaNombre: string | null;
+  prefijoAsunto: string | null;
+  ultimaRevision: string | null;
+}
+
+const CLAVE_CONFIG_CORREO = "global";
+
+export async function obtenerConfiguracionCorreo(): Promise<ConfiguracionCorreo | null> {
+  const valor = await storeCorreoConfig().get(CLAVE_CONFIG_CORREO, { type: "json" });
+  return (valor as ConfiguracionCorreo | null) ?? null;
+}
+
+export async function guardarConfiguracionCorreo(config: ConfiguracionCorreo): Promise<void> {
+  await storeCorreoConfig().setJSON(CLAVE_CONFIG_CORREO, config);
+}
+
+export async function desconectarCorreo(): Promise<void> {
+  await storeCorreoConfig().delete(CLAVE_CONFIG_CORREO);
+}
+
+export async function idsMensajesProcesados(): Promise<Set<string>> {
+  const { blobs } = await storeCorreoMensajesProcesados().list();
+  return new Set(blobs.map((b) => b.key));
+}
+
+export async function marcarMensajeProcesado(id: string): Promise<void> {
+  await storeCorreoMensajesProcesados().setJSON(id, { procesadoEn: new Date().toISOString() });
+}
+
+export interface Pendiente {
+  id: string;
+  mensajeId: string;
+  archivoOrigen: string;
+  remitente: string;
+  asunto: string;
+  fechaCorreo: string;
+  detectadoEn: string;
+  evento: EventoExtraido;
+  texto: string;
+}
+
+export async function guardarPendiente(pendiente: Omit<Pendiente, "id" | "detectadoEn">): Promise<void> {
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const registro: Pendiente = { ...pendiente, id, detectadoEn: new Date().toISOString() };
+  await storePendientes().setJSON(id, registro);
+}
+
+export async function listarPendientes(): Promise<Pendiente[]> {
+  const { blobs } = await storePendientes().list();
+  const registros = await Promise.all(
+    blobs.map(async (b) => (await storePendientes().get(b.key, { type: "json" })) as Pendiente)
+  );
+  return registros.filter(Boolean).sort((a, b) => a.detectadoEn.localeCompare(b.detectadoEn));
+}
+
+export async function obtenerPendiente(id: string): Promise<Pendiente | null> {
+  const valor = await storePendientes().get(id, { type: "json" });
+  return (valor as Pendiente | null) ?? null;
+}
+
+export async function borrarPendiente(id: string): Promise<void> {
+  await storePendientes().delete(id);
 }

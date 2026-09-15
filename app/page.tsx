@@ -55,6 +55,9 @@ export default function Home() {
   const [textoFicha, setTextoFicha] = useState<string | null>(null);
   const [nombreFicha, setNombreFicha] = useState<string | null>(null);
   const [metodoExtraccion, setMetodoExtraccion] = useState<"heuristico" | "ia" | null>(null);
+  const [bibliotecaLista, setBibliotecaLista] = useState(false);
+  const [pendienteId, setPendienteId] = useState<string | null>(null);
+  const pendienteCargado = useRef(false);
 
   // Al arrancar: recupera la carpeta local ya elegida en una sesión anterior (si la hay)
   // y carga la preferencia de separadores de momento.
@@ -80,6 +83,7 @@ export default function Home() {
       if (modo === "local") {
         if (!carpetaHandle) {
           setArchivosBiblioteca([]);
+          setBibliotecaLista(true);
           return;
         }
         setArchivosBiblioteca(await listarPdfs(carpetaHandle));
@@ -87,6 +91,7 @@ export default function Home() {
         const datos = await fetch("/api/biblioteca").then((r) => r.json());
         setArchivosBiblioteca(datos.archivos.map((a: { nombre: string }) => a.nombre));
       }
+      setBibliotecaLista(true);
     })();
   }, [modo, carpetaHandle]);
 
@@ -131,6 +136,46 @@ export default function Home() {
     );
     setFilas(nuevasFilas);
   }
+
+  // Si se llega con ?pendiente=<id> (desde /pendientes), carga esa ficha ya detectada
+  // por correo en vez de esperar una subida manual.
+  useEffect(() => {
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      setPendienteId(params.get("pendiente"));
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!pendienteId || !bibliotecaLista || pendienteCargado.current) return;
+    pendienteCargado.current = true;
+    (async () => {
+      setError(null);
+      setCargando("Cargando la ficha pendiente...");
+      try {
+        const respuesta = await fetch(`/api/pendientes/${pendienteId}`).then((r) => r.json());
+        if (respuesta.error) throw new Error(respuesta.error);
+        const pendiente = respuesta.pendiente as { evento: EventoExtraido; texto: string; archivoOrigen: string };
+        setEvento(pendiente.evento);
+        setTextoFicha(pendiente.texto);
+        setNombreFicha(pendiente.archivoOrigen);
+        setMetodoExtraccion("heuristico");
+        const obras: ObraConMomento[] = pendiente.evento.momentos.flatMap((m) =>
+          m.obras.map((o) => ({ momento: m.nombre, titulo: o.titulo, compositor: o.compositor }))
+        );
+        setCargando("Buscando partituras coincidentes...");
+        await emparejarTodas(obras);
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setCargando(null);
+      }
+    })();
+    // emparejarTodas se recrea en cada render (cierra sobre archivosBiblioteca);
+    // incluirla en las dependencias causaría un bucle, y ya se controla con el ref
+    // pendienteCargado que esto se ejecute una sola vez por pendiente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendienteId, bibliotecaLista]);
 
   async function onSubirFicha(file: File) {
     setError(null);
@@ -275,6 +320,12 @@ export default function Home() {
         }
         const xml = construir4ss(titulo, entradas);
         descargarTexto(xml, `${titulo.replace(/[\\/:*?"<>|]/g, "_")}.4ss`, "application/octet-stream");
+      }
+
+      // Si esta ficha venía de "Pendientes" (detectada por correo), al confirmarla
+      // generando la setlist desaparece de la cola.
+      if (pendienteId) {
+        await fetch(`/api/pendientes/${pendienteId}`, { method: "DELETE" });
       }
     } catch (e) {
       setError((e as Error).message);

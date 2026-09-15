@@ -32,6 +32,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Link href="/biblioteca" className="hover:underline">
             Biblioteca en la nube
           </Link>
+          <Link href="/pendientes" className="hover:underline">
+            Pendientes
+          </Link>
+          <Link href="/correo" className="hover:underline">
+            Correo
+          </Link>
           <Link href="/estadisticas" className="hover:underline">
             Estadísticas
           </Link>
