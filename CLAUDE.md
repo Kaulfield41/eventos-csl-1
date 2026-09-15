@@ -50,6 +50,10 @@ es lo mínimo para no dejarla abierta a cualquiera.
 - **Modo dueño vs. invitado** (`lib/modo-dueno.ts`, `lib/decisiones-locales.ts`): dos
   perfiles de uso sin necesitar cuentas reales todavía. El cómo y el porqué están
   comentados en esos dos archivos — léelos antes de tocar nada relacionado.
+- **No hay historial de eventos ni pantalla de estadísticas, a propósito**: existieron
+  (`/estadisticas`, `guardarEventoHistorial` en `lib/store.ts`) y se quitaron — las
+  estadísticas del negocio vivirán en otra app aparte. No reintroducir esa persistencia
+  sin comprobar que esto sigue siendo así.
 - **Quedan dos menciones a "alborada" en el código, y son intencionadas** (el resto
   del repo ya se genericizó al hacerlo público):
   - Los nombres de los stores en `lib/store.ts` (prefijo `alborada-`) son claves
@@ -75,6 +79,14 @@ netlify dev      # arranca todo en local (http://localhost:8888) con Blobs funci
 caché de funciones rota (error `ENOENT: run-config.json`, o peticiones que 404 en
 ~6ms sin log de error). Si vas a desplegar y seguir trabajando en local, para el
 `netlify dev` antes de desplegar y vuelve a arrancarlo después.
+
+**Los despliegues a producción cuestan créditos de verdad** (plan gratuito: 300
+créditos/mes, cada `netlify deploy --prod` consume ~15 — el uso normal de la app en sí,
+peticiones/cómputo/ancho de banda, es prácticamente gratis en comparación). No
+desplegar después de cada cambio pequeño: comitear y hacer `git push` no cuesta nada,
+así que hay que acumular varios cambios y desplegar de una vez. Comprobar los créditos
+restantes en el dashboard de Netlify (Billing → Usage) antes de un despliegue si hay
+dudas.
 
 ```bash
 npx tsc --noEmit -p tsconfig.json && npx eslint .   # antes de cualquier commit
