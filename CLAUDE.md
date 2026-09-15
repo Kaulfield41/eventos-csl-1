@@ -47,6 +47,17 @@ es lo mínimo para no dejarla abierta a cualquiera.
   devuelve un error claro si el archivo no es el que toca.
 - **Descargas como `application/octet-stream`, no `application/xml`**: Safari
   "corregía" la extensión del `.4ss` añadiendo `.xml` al final si se servía como XML.
+- **Quedan dos menciones a "alborada" en el código, y son intencionadas** (el resto
+  del repo ya se genericizó al hacerlo público):
+  - Los nombres de los stores en `lib/store.ts` (prefijo `alborada-`) son claves
+    reales ya en uso en producción — renombrarlas sin migrar los datos existentes
+    hace que la app deje de ver la biblioteca/config/decisiones ya guardadas.
+  - `MARCADORES_FIN_PROGRAMA` en `lib/extractor-heuristico.ts` incluye la frase
+    `"alborada eventos musicales"`: no es una marca puesta en el código, es el texto
+    literal con el que las fichas reales usadas para probar la app firman al final
+    del documento (p.ej. "Organiza: Alborada Eventos Musicales"). La heurística la
+    usa para saber dónde termina la lista de obras/momentos y dejar de intentar
+    extraer más piezas; quitarla rompe esa detección en esas fichas reales.
 
 ## Rutina de desarrollo
 
