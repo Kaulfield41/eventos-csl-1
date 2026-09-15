@@ -1,29 +1,15 @@
-import { listarBibliotecaCloud, subirPartituraCloud, borrarPartituraCloud } from "@/lib/store";
+import { listarBibliotecaCloud, borrarPartituraCloud } from "@/lib/store";
 
 export const runtime = "nodejs";
 
-/** Biblioteca de partituras en la nube (modo "nube"): listar, subir y borrar PDFs. */
+/**
+ * Biblioteca de partituras en la nube (modo "nube"): listar y borrar PDFs. La subida se
+ * hace por fragmentos (ver app/api/biblioteca/chunk/route.ts) porque las funciones de
+ * Netlify tienen un límite de tamaño de petición muy por debajo de partituras reales.
+ */
 export async function GET() {
   const archivos = await listarBibliotecaCloud();
   return Response.json({ archivos });
-}
-
-export async function POST(request: Request) {
-  const formData = await request.formData();
-  const archivos = formData.getAll("archivos").filter((a): a is File => a instanceof File);
-
-  if (archivos.length === 0) {
-    return Response.json({ error: "No se recibió ningún archivo." }, { status: 400 });
-  }
-
-  for (const archivo of archivos) {
-    if (!archivo.name.toLowerCase().endsWith(".pdf")) {
-      return Response.json({ error: `"${archivo.name}" no es un PDF.` }, { status: 400 });
-    }
-    await subirPartituraCloud(archivo.name, await archivo.arrayBuffer());
-  }
-
-  return Response.json({ ok: true, subidos: archivos.length });
 }
 
 export async function DELETE(request: Request) {

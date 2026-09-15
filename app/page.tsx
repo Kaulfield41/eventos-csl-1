@@ -14,6 +14,7 @@ import {
   leerPdfComoBase64,
   bytesABase64,
 } from "@/lib/browser-fs";
+import { subirPartiturasPorFragmentos } from "@/lib/upload-cliente";
 
 type Modo = "local" | "nube";
 
@@ -569,17 +570,23 @@ function BuscadorPartitura({
 }
 
 function GestionBibliotecaNube({ archivos, onCambiado }: { archivos: string[]; onCambiado: () => void }) {
-  const [subiendo, setSubiendo] = useState(false);
+  const [progreso, setProgreso] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function onSubirArchivos(files: FileList) {
-    setSubiendo(true);
+    setError(null);
     try {
-      const formData = new FormData();
-      for (const f of Array.from(files)) formData.append("archivos", f);
-      await fetch("/api/biblioteca", { method: "POST", body: formData });
+      const fallos = await subirPartiturasPorFragmentos(Array.from(files), (archivoActual, totalArchivos, p) => {
+        setProgreso(
+          `Subiendo ${archivoActual}/${totalArchivos}: ${p.archivo} (fragmento ${p.fragmentoActual}/${p.totalFragmentos})`
+        );
+      });
+      if (fallos.length > 0) {
+        setError(`${fallos.length} archivo(s) no se pudieron subir: ${fallos.map((f) => f.nombre).join(", ")}`);
+      }
       onCambiado();
     } finally {
-      setSubiendo(false);
+      setProgreso(null);
     }
   }
 
@@ -589,9 +596,11 @@ function GestionBibliotecaNube({ archivos, onCambiado }: { archivos: string[]; o
         type="file"
         accept=".pdf"
         multiple
-        disabled={subiendo}
+        disabled={!!progreso}
         onChange={(e) => e.target.files && onSubirArchivos(e.target.files)}
       />
+      {progreso && <span className="text-xs opacity-70">{progreso}</span>}
+      {error && <span className="text-xs text-red-600">{error}</span>}
       <span className="opacity-70">{archivos.length} partituras en la biblioteca en la nube</span>
     </div>
   );

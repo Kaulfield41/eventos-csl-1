@@ -41,6 +41,10 @@ function storeBibliotecaPdfs() {
   return getStore("alborada-biblioteca-pdfs");
 }
 
+function storeBibliotecaChunksTemp() {
+  return getStore("alborada-biblioteca-chunks-temp");
+}
+
 function storeEventos() {
   return getStore("alborada-eventos");
 }
@@ -109,6 +113,45 @@ export async function obtenerPartituraCloud(nombre: string): Promise<ArrayBuffer
 export async function borrarPartituraCloud(nombre: string): Promise<void> {
   await storeBibliotecaPdfs().delete(nombre);
   await storeBibliotecaMetadata().delete(nombre);
+}
+
+/**
+ * Subida troceada: las funciones de Netlify tienen un límite de tamaño de petición
+ * (~4,5 MB efectivos) muy por debajo de partituras reales (hasta 35 MB en la biblioteca
+ * de Alborada), así que el navegador divide cada PDF en fragmentos pequeños y aquí se
+ * van guardando hasta tener todos, momento en el que se ensamblan y se guardan como un
+ * único PDF (ver app/api/biblioteca/chunk/route.ts).
+ */
+function claveChunk(nombre: string, indice: number): string {
+  return `${nombre}::${String(indice).padStart(6, "0")}`;
+}
+
+export async function guardarChunk(nombre: string, indice: number, datos: ArrayBuffer): Promise<void> {
+  await storeBibliotecaChunksTemp().set(claveChunk(nombre, indice), datos);
+}
+
+/** Si ya están los `total` fragmentos de `nombre`, los ensambla, los guarda como partitura y borra los fragmentos. */
+export async function ensamblarSiCompleto(nombre: string, total: number): Promise<boolean> {
+  const store = storeBibliotecaChunksTemp();
+  const { blobs } = await store.list({ prefix: `${nombre}::` });
+  if (blobs.length < total) return false;
+
+  const trozos = await Promise.all(
+    Array.from({ length: total }, (_, i) => store.get(claveChunk(nombre, i), { type: "arrayBuffer" }))
+  );
+  if (trozos.some((t) => t === null)) return false; // por si acaso llegan repetidos/incompletos
+
+  const tamanoTotal = trozos.reduce((suma, t) => suma + (t as ArrayBuffer).byteLength, 0);
+  const completo = new Uint8Array(tamanoTotal);
+  let offset = 0;
+  for (const trozo of trozos) {
+    completo.set(new Uint8Array(trozo as ArrayBuffer), offset);
+    offset += (trozo as ArrayBuffer).byteLength;
+  }
+
+  await subirPartituraCloud(nombre, completo.buffer);
+  await Promise.all(Array.from({ length: total }, (_, i) => store.delete(claveChunk(nombre, i))));
+  return true;
 }
 
 export interface EventoHistorial {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { subirPartiturasPorFragmentos } from "@/lib/upload-cliente";
 
 interface ArchivoBiblioteca {
   nombre: string;
@@ -14,7 +15,8 @@ interface ArchivoBiblioteca {
  */
 export default function Biblioteca() {
   const [archivos, setArchivos] = useState<ArchivoBiblioteca[]>([]);
-  const [subiendo, setSubiendo] = useState(false);
+  const [progreso, setProgreso] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [cargado, setCargado] = useState(false);
 
   async function recargar() {
@@ -32,14 +34,19 @@ export default function Biblioteca() {
   }, []);
 
   async function onSubir(files: FileList) {
-    setSubiendo(true);
+    setError(null);
     try {
-      const formData = new FormData();
-      for (const f of Array.from(files)) formData.append("archivos", f);
-      await fetch("/api/biblioteca", { method: "POST", body: formData });
+      const fallos = await subirPartiturasPorFragmentos(Array.from(files), (archivoActual, totalArchivos, p) => {
+        setProgreso(
+          `Subiendo ${archivoActual}/${totalArchivos}: ${p.archivo} (fragmento ${p.fragmentoActual}/${p.totalFragmentos})`
+        );
+      });
+      if (fallos.length > 0) {
+        setError(`${fallos.length} archivo(s) no se pudieron subir: ${fallos.map((f) => f.nombre).join(", ")}`);
+      }
       await recargar();
     } finally {
-      setSubiendo(false);
+      setProgreso(null);
     }
   }
 
@@ -60,7 +67,9 @@ export default function Biblioteca() {
         dispositivo sin depender de una carpeta local.
       </p>
 
-      <input type="file" accept=".pdf" multiple disabled={subiendo} onChange={(e) => e.target.files && onSubir(e.target.files)} />
+      <input type="file" accept=".pdf" multiple disabled={!!progreso} onChange={(e) => e.target.files && onSubir(e.target.files)} />
+      {progreso && <p className="text-sm opacity-70">{progreso}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       {cargado && archivos.length === 0 && <p className="text-sm opacity-60">Aún no hay partituras subidas.</p>}
 
