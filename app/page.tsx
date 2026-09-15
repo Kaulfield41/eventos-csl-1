@@ -348,7 +348,7 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-3xl w-full p-6 flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Alborada · Setlists para forScore</h1>
+        <h1 className="text-2xl font-semibold">Setlists para forScore</h1>
         <p className="text-sm opacity-70">
           Sube la ficha del evento (Word), revisa qué partitura va con cada obra, y genera la
           setlist lista para importar en forScore.
@@ -525,9 +525,9 @@ function FilaObraUI({
 
 /**
  * Buscador con autocompletado para elegir la partitura de una obra. Sustituye a un
- * <select> normal porque con bibliotecas de cientos de PDF (ej. las 439 partituras
- * reales de Alborada) un desplegable nativo es inmanejable — aquí se escribe y filtra
- * al momento, con "ninguna partitura" siempre disponible arriba del todo.
+ * <select> normal porque con bibliotecas de cientos de PDF (ej. una biblioteca real de
+ * 439 partituras) un desplegable nativo es inmanejable — aquí se escribe y filtra al
+ * momento, con "ninguna partitura" siempre disponible arriba del todo.
  */
 function BuscadorPartitura({
   valor,

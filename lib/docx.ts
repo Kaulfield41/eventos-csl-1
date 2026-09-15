@@ -2,7 +2,7 @@ import JSZip from "jszip";
 import { XMLParser } from "fast-xml-parser";
 
 /**
- * Port de extraer_texto() del prototipo Python (App obras Alborada/app/extractor.py):
+ * Port de extraer_texto() de un prototipo Python anterior (app/extractor.py):
  * recorre los párrafos del documento en orden y luego añade cada tabla, fila por fila,
  * con las celdas unidas por " | ". Se reimplementa a mano (en vez de usar una librería
  * genérica de conversión) para no perder la fidelidad de ese recorrido concreto.

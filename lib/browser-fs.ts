@@ -6,7 +6,7 @@
  * y Firefox no la soportan, y esta app debe avisarlo en pantalla en vez de fallar en silencio.
  */
 
-const DB_NOMBRE = "alborada-setlists";
+const DB_NOMBRE = "setlists-forscore";
 const DB_ALMACEN = "handles";
 const CLAVE_HANDLE = "carpeta-partituras";
 

@@ -3,7 +3,7 @@
 /**
  * Sube un PDF a la biblioteca en la nube troceándolo en fragmentos pequeños, porque las
  * funciones de Netlify tienen un límite de tamaño de petición (~4,5 MB efectivos) muy
- * por debajo de partituras reales (hasta 35 MB en la biblioteca real de Alborada). El
+ * por debajo de partituras reales (hasta 35 MB en una biblioteca real). El
  * servidor va guardando los fragmentos y los ensambla solo al recibir el último
  * (ver app/api/biblioteca/chunk/route.ts).
  */

@@ -4,9 +4,8 @@ Convierte la ficha de un evento musical (Word, con el programa organizado por mo
 en una setlist de forScore (`.4ss`) lista para importar, con las partituras (PDF) ya
 adjuntas dentro del archivo.
 
-Hermano del prototipo original en `../App obras Alborada/` (extracción y conteo de
-obras con Claude); esta app añade el emparejamiento con partituras reales y la
-generación del `.4ss`.
+Hermana de un prototipo Python anterior (extracción y conteo de obras con Claude);
+esta app añade el emparejamiento con partituras reales y la generación del `.4ss`.
 
 ## Cómo funciona
 
@@ -108,7 +107,7 @@ la bandeja cuatro veces al día — ajusta el cron en ese archivo a tu franja ho
 
 ## Estado y roadmap
 
-Primera versión pensada para el uso propio de Alborada (sin cuentas de cliente
+Primera versión pensada para el uso de un solo negocio (sin cuentas de cliente
 todavía, pero con el modelo de datos ya preparado para añadirlas). Pendiente de forma
 explícita para más adelante:
 

@@ -3,7 +3,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { EventoExtraidoSchema, type EventoExtraido } from "./models";
 
 /**
- * Port de app/extractor.py del prototipo Python (App obras Alborada/app/extractor.py):
+ * Port de app/extractor.py de un prototipo Python anterior:
  * mismo system prompt, mismo modelo por defecto. En vez de forzar una tool_choice como
  * hacía el prototipo, se usa client.messages.parse() + salida estructurada por Zod
  * (el enfoque recomendado en TypeScript), que valida la respuesta automáticamente.

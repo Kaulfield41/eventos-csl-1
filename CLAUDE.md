@@ -1,12 +1,12 @@
 @AGENTS.md
 
-# Alborada · Setlists para forScore
+# Setlists para forScore
 
 App web (Next.js, desplegada en Netlify) que convierte la "ficha" de un evento
 musical (Word, con el programa organizado por momentos) en una setlist de forScore
-(`.4ss`) con las partituras ya adjuntas. Hermana del prototipo Python en
-`../App obras Alborada/` (extracción y conteo de obras), pero es un proyecto
-independiente — no reutiliza su código, solo su idea y sus datos de referencia.
+(`.4ss`) con las partituras ya adjuntas. Hermana de un prototipo Python anterior
+(extracción y conteo de obras), pero es un proyecto independiente — no reutiliza su
+código, solo su idea y sus datos de referencia.
 
 Ver `README.md` para cómo funciona la app desde el punto de vista del usuario.
 
@@ -33,9 +33,9 @@ es lo mínimo para no dejarla abierta a cualquiera.
   porque causaban falsos positivos reales.
 - **Subida de partituras a la nube troceada** (`lib/upload-cliente.ts` +
   `app/api/biblioteca/chunk/route.ts`): las funciones de Netlify tienen un límite de
-  ~4,5 MB por petición, muy por debajo de partituras reales (hasta 35 MB en la
-  biblioteca real de Alborada, 424 MB en total). Cada PDF se trocea en fragmentos de
-  3 MB en el navegador y se reensambla en el servidor.
+  ~4,5 MB por petición, muy por debajo de partituras reales (hasta 35 MB en una
+  biblioteca real, 424 MB en total). Cada PDF se trocea en fragmentos de 3 MB en el
+  navegador y se reensambla en el servidor.
 - **`.4ss` autocontenido** (`lib/forscore.ts`): PDFs embebidos en base64 (confirmado
   contra la documentación oficial de forScore), con la ficha-resumen
   (`lib/ficha-pdf.ts`, generada con `pdf-lib`) siempre como primera página, y

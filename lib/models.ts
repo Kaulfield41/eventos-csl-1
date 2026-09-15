@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 /**
- * Espejo en TypeScript de app/models.py del prototipo Python original
- * (App obras Alborada/app/models.py). Misma forma, mismos campos.
+ * Espejo en TypeScript de app/models.py de un prototipo Python anterior.
+ * Misma forma, mismos campos.
  */
 
 export const ObraExtraidaSchema = z.object({

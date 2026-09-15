@@ -30,7 +30,7 @@ export function proxy(request: NextRequest) {
 
   return new Response("Autenticación requerida.", {
     status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="Alborada Setlists"' },
+    headers: { "WWW-Authenticate": 'Basic realm="Setlists forScore"' },
   });
 }
 

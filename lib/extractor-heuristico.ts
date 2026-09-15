@@ -52,6 +52,9 @@ const MOMENTOS_CONOCIDOS = [
   "responso",
 ];
 
+// "alborada eventos musicales" no es una marca dejada en el código: es el texto real
+// (firma del negocio) con el que terminan las fichas reales usadas para probar esto —
+// quitarlo rompería la detección de fin de programa en esos documentos.
 const MARCADORES_FIN_PROGRAMA = ["notas", "alborada eventos musicales", "organiza"];
 const MARCADORES_CABECERA = [
   "tipo de evento",

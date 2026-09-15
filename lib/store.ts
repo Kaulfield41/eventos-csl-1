@@ -6,13 +6,17 @@ import type { Credentials } from "google-auth-library";
 /**
  * Persistencia con Netlify Blobs. Se eligió en vez de aprovisionar ya una base de datos
  * Postgres (Netlify DB) para simplificar el primer despliegue: no requiere crear ni
- * migrar un esquema aparte, y el volumen de datos de Alborada (decisiones de
+ * migrar un esquema aparte, y el volumen de datos de un solo negocio (decisiones de
  * emparejamiento, preferencias, e historial de eventos) es pequeño. Si el histórico
  * crece mucho o se necesitan consultas relacionales más ricas para las estadísticas,
  * migrar a Netlify DB más adelante es sencillo.
  *
  * Requiere ejecutarse con contexto de Netlify (`netlify dev` en local, o desplegado en
  * Netlify) para que `getStore` resuelva las credenciales del sitio automáticamente.
+ *
+ * Los nombres de los stores (prefijo "alborada-") son claves reales ya en uso en
+ * producción — no renombrarlos sin migrar los datos existentes al nombre nuevo, o la
+ * app deja de ver la biblioteca/config/decisiones ya guardadas.
  */
 
 export interface DecisionEmparejamiento {
@@ -118,8 +122,8 @@ export async function borrarPartituraCloud(nombre: string): Promise<void> {
 
 /**
  * Subida troceada: las funciones de Netlify tienen un límite de tamaño de petición
- * (~4,5 MB efectivos) muy por debajo de partituras reales (hasta 35 MB en la biblioteca
- * de Alborada), así que el navegador divide cada PDF en fragmentos pequeños y aquí se
+ * (~4,5 MB efectivos) muy por debajo de partituras reales (hasta 35 MB en una biblioteca
+ * real), así que el navegador divide cada PDF en fragmentos pequeños y aquí se
  * van guardando hasta tener todos, momento en el que se ensamblan y se guardan como un
  * único PDF (ver app/api/biblioteca/chunk/route.ts).
  */

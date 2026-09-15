@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Alborada · Setlists para forScore",
+  title: "Setlists para forScore",
   description: "Genera setlists de forScore a partir de las fichas de eventos musicales.",
 };
 
