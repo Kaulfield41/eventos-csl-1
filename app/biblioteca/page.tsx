@@ -67,7 +67,7 @@ export default function Biblioteca() {
         dispositivo sin depender de una carpeta local.
       </p>
 
-      <input type="file" accept=".pdf" multiple disabled={!!progreso} onChange={(e) => e.target.files && onSubir(e.target.files)} />
+      <input type="file" accept=".pdf,application/pdf" multiple disabled={!!progreso} onChange={(e) => e.target.files && onSubir(e.target.files)} />
       {progreso && <p className="text-sm opacity-70">{progreso}</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
 
