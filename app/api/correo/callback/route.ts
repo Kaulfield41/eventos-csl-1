@@ -1,4 +1,4 @@
-import { intercambiarCodigo, obtenerCuentaConectada } from "@/lib/gmail";
+import { intercambiarCodigo, obtenerCuentaConectada, urlCallbackDesdePeticion } from "@/lib/gmail";
 import { guardarConfiguracionCorreo, obtenerConfiguracionCorreo } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     return Response.redirect(new URL("/correo?error=sin_codigo", request.url), 302);
   }
 
-  const redirectUri = new URL("/api/correo/callback", request.url).toString();
+  const redirectUri = urlCallbackDesdePeticion(request);
   const tokens = await intercambiarCodigo(code, redirectUri);
 
   const anterior = await obtenerConfiguracionCorreo();

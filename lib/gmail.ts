@@ -10,6 +10,18 @@ import type { Credentials } from "google-auth-library";
 
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
 
+/**
+ * URL de callback a partir de la petición entrante. Usa las cabeceras de host/protocolo
+ * (fiables tras el proxy de Netlify) en vez de `request.url`, que en producción refleja
+ * la URL específica de ese despliegue concreto (que cambia en cada `deploy`) y no el
+ * dominio fijo registrado como redirect URI autorizado en Google Cloud Console.
+ */
+export function urlCallbackDesdePeticion(request: Request): string {
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? new URL(request.url).host;
+  const protocolo = request.headers.get("x-forwarded-proto") ?? new URL(request.url).protocol.replace(":", "");
+  return `${protocolo}://${host}/api/correo/callback`;
+}
+
 function clienteOAuth(redirectUri: string) {
   return new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, redirectUri);
 }
