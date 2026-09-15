@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { subirPartiturasPorFragmentos } from "@/lib/upload-cliente";
+import { determinarModoDueno } from "@/lib/modo-dueno";
 
 interface ArchivoBiblioteca {
   nombre: string;
@@ -18,6 +19,7 @@ export default function Biblioteca() {
   const [progreso, setProgreso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cargado, setCargado] = useState(false);
+  const [dueno, setDueno] = useState(false);
 
   async function recargar() {
     const datos = await fetch("/api/biblioteca").then((r) => r.json());
@@ -27,9 +29,8 @@ export default function Biblioteca() {
 
   useEffect(() => {
     (async () => {
-      const datos = await fetch("/api/biblioteca").then((r) => r.json());
-      setArchivos(datos.archivos);
-      setCargado(true);
+      setDueno(determinarModoDueno());
+      await recargar();
     })();
   }, []);
 
@@ -67,9 +68,18 @@ export default function Biblioteca() {
         dispositivo sin depender de una carpeta local.
       </p>
 
-      <input type="file" multiple disabled={!!progreso} onChange={(e) => e.target.files && onSubir(e.target.files)} />
-      {progreso && <p className="text-sm opacity-70">{progreso}</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {dueno ? (
+        <>
+          <input type="file" multiple disabled={!!progreso} onChange={(e) => e.target.files && onSubir(e.target.files)} />
+          {progreso && <p className="text-sm opacity-70">{progreso}</p>}
+          {error && <p className="text-sm text-red-600">{error}</p>}
+        </>
+      ) : (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 self-start">
+          Modo invitado: puedes ver la biblioteca, pero solo el dueño puede subir o borrar
+          partituras aquí.
+        </p>
+      )}
 
       {cargado && archivos.length === 0 && <p className="text-sm opacity-60">Aún no hay partituras subidas.</p>}
 
@@ -79,9 +89,11 @@ export default function Biblioteca() {
             <span className="min-w-0 break-words">{a.nombre}</span>
             <div className="flex shrink-0 items-center gap-3 whitespace-nowrap opacity-70">
               <span>{(a.tamano / 1024).toFixed(0)} KB</span>
-              <button onClick={() => onBorrar(a.nombre)} className="text-red-600 hover:underline">
-                Borrar
-              </button>
+              {dueno && (
+                <button onClick={() => onBorrar(a.nombre)} className="text-red-600 hover:underline">
+                  Borrar
+                </button>
+              )}
             </div>
           </li>
         ))}

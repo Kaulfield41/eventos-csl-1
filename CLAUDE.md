@@ -47,6 +47,9 @@ es lo mínimo para no dejarla abierta a cualquiera.
   devuelve un error claro si el archivo no es el que toca.
 - **Descargas como `application/octet-stream`, no `application/xml`**: Safari
   "corregía" la extensión del `.4ss` añadiendo `.xml` al final si se servía como XML.
+- **Modo dueño vs. invitado** (`lib/modo-dueno.ts`, `lib/decisiones-locales.ts`): dos
+  perfiles de uso sin necesitar cuentas reales todavía. El cómo y el porqué están
+  comentados en esos dos archivos — léelos antes de tocar nada relacionado.
 - **Quedan dos menciones a "alborada" en el código, y son intencionadas** (el resto
   del repo ya se genericizó al hacerlo público):
   - Los nombres de los stores en `lib/store.ts` (prefijo `alborada-`) son claves

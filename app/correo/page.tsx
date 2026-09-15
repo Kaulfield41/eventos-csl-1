@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { determinarModoDueno } from "@/lib/modo-dueno";
 
 interface EstadoCorreo {
   conectado: boolean;
@@ -23,6 +24,7 @@ export default function Correo() {
   const [prefijoAsunto, setPrefijoAsunto] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
+  const [dueno, setDueno] = useState<boolean | null>(null);
 
   async function cargar() {
     const datos = (await fetch("/api/correo/estado").then((r) => r.json())) as EstadoCorreo;
@@ -33,12 +35,29 @@ export default function Correo() {
 
   useEffect(() => {
     (async () => {
+      const esDuenoAhora = determinarModoDueno();
+      setDueno(esDuenoAhora);
+      // Esta pantalla controla la cuenta de Gmail del negocio (conectar/desconectar,
+      // etiqueta vigilada) — información y acciones que un invitado no necesita ni debe
+      // ver, así que ni se pide el estado al servidor si no es el dueño.
+      if (!esDuenoAhora) return;
       await cargar();
       const params = new URLSearchParams(window.location.search);
       const error = params.get("error");
       if (error) setMensaje(`No se pudo conectar: ${error}`);
     })();
   }, []);
+
+  if (dueno === null) return null;
+
+  if (!dueno) {
+    return (
+      <main className="mx-auto max-w-3xl w-full p-6 flex flex-col gap-6">
+        <h1 className="text-2xl font-semibold">Correo</h1>
+        <p className="text-sm opacity-70">Esta sección es solo para el dueño de la app.</p>
+      </main>
+    );
+  }
 
   async function onGuardarEtiqueta() {
     if (!etiquetaId) return;

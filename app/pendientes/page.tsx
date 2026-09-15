@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { determinarModoDueno } from "@/lib/modo-dueno";
 
 interface Pendiente {
   id: string;
@@ -22,6 +23,7 @@ interface Pendiente {
 export default function Pendientes() {
   const [pendientes, setPendientes] = useState<Pendiente[]>([]);
   const [cargado, setCargado] = useState(false);
+  const [dueno, setDueno] = useState<boolean | null>(null);
 
   async function cargar() {
     const datos = await fetch("/api/pendientes").then((r) => r.json());
@@ -31,13 +33,29 @@ export default function Pendientes() {
 
   useEffect(() => {
     (async () => {
-      await cargar();
+      const esDuenoAhora = determinarModoDueno();
+      setDueno(esDuenoAhora);
+      // Las fichas pendientes vienen de correos reales del negocio (remitente, asunto,
+      // programa del evento) — no es algo que un invitado deba ver, así que ni se pide
+      // la lista al servidor si no es el dueño.
+      if (esDuenoAhora) await cargar();
     })();
   }, []);
 
   async function onDescartar(id: string) {
     await fetch(`/api/pendientes/${id}`, { method: "DELETE" });
     await cargar();
+  }
+
+  if (dueno === null) return null;
+
+  if (!dueno) {
+    return (
+      <main className="mx-auto max-w-3xl w-full p-6 flex flex-col gap-6">
+        <h1 className="text-2xl font-semibold">Pendientes de revisar</h1>
+        <p className="text-sm opacity-70">Esta sección es solo para el dueño de la app.</p>
+      </main>
+    );
   }
 
   return (

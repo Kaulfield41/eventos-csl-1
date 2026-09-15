@@ -15,6 +15,14 @@ import {
   bytesABase64,
 } from "@/lib/browser-fs";
 import { subirPartiturasPorFragmentos } from "@/lib/upload-cliente";
+import { determinarModoDueno } from "@/lib/modo-dueno";
+import {
+  obtenerDecisionesLocales,
+  guardarDecisionLocal,
+  borrarDecisionLocal,
+  obtenerPreferenciasLocales,
+  guardarPreferenciasLocales,
+} from "@/lib/decisiones-locales";
 
 type Modo = "local" | "nube";
 
@@ -57,16 +65,28 @@ export default function Home() {
   const [bibliotecaLista, setBibliotecaLista] = useState(false);
   const [restauracionLista, setRestauracionLista] = useState(false);
   const [pendienteId, setPendienteId] = useState<string | null>(null);
+  const [dueno, setDueno] = useState(false);
   const pendienteCargado = useRef(false);
 
-  // Al arrancar: recupera la carpeta local ya elegida en una sesión anterior (si la hay)
-  // y carga la preferencia de separadores de momento. `restauracionLista` marca cuándo
-  // termina este intento, para que la recarga de la biblioteca (siguiente efecto) no
-  // arranque antes con `carpetaHandle` todavía a null y deje la lista vacía a medias.
+  // Al arrancar: decide si este navegador es "el dueño" o un invitado (ver
+  // lib/modo-dueno.ts), recupera la carpeta local ya elegida en una sesión anterior (si
+  // la hay), y carga la preferencia de separadores de momento (del servidor si es el
+  // dueño, o del propio navegador si es invitado). Se usa `esDuenoAhora` en vez de leer
+  // el estado `dueno` en este mismo efecto porque `setDueno` no se refleja hasta el
+  // siguiente render. `restauracionLista` marca cuándo termina este intento, para que la
+  // recarga de la biblioteca (siguiente efecto) no arranque antes con `carpetaHandle`
+  // todavía a null y deje la lista vacía a medias.
   useEffect(() => {
     (async () => {
-      const preferencias = await fetch("/api/preferencias").then((r) => r.json());
-      setInsertarSeparadores(preferencias.preferencias.insertarSeparadoresMomento);
+      const esDuenoAhora = determinarModoDueno();
+      setDueno(esDuenoAhora);
+
+      if (esDuenoAhora) {
+        const preferencias = await fetch("/api/preferencias").then((r) => r.json());
+        setInsertarSeparadores(preferencias.preferencias.insertarSeparadoresMomento);
+      } else {
+        setInsertarSeparadores(obtenerPreferenciasLocales().insertarSeparadoresMomento);
+      }
 
       if (soportaFileSystemAccess()) {
         const handle = await recuperarCarpetaGuardada();
@@ -111,11 +131,15 @@ export default function Home() {
 
   async function onCambiarSeparadores(valor: boolean) {
     setInsertarSeparadores(valor);
-    await fetch("/api/preferencias", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ insertarSeparadoresMomento: valor }),
-    });
+    if (dueno) {
+      await fetch("/api/preferencias", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ insertarSeparadoresMomento: valor }),
+      });
+    } else {
+      guardarPreferenciasLocales({ insertarSeparadoresMomento: valor });
+    }
   }
 
   async function emparejarTodas(obras: ObraConMomento[]) {
@@ -125,6 +149,7 @@ export default function Home() {
       body: JSON.stringify({
         obras: obras.map((o) => ({ titulo: o.titulo, compositor: o.compositor })),
         archivos: archivosBiblioteca,
+        ...(dueno ? {} : { decisionesLocales: obtenerDecisionesLocales() }),
       }),
     }).then((r) => r.json());
 
@@ -234,11 +259,15 @@ export default function Home() {
   }
 
   async function guardarDecisionSiFija(fila: FilaObra, archivoNombre: string | null) {
-    await fetch("/api/emparejar", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titulo: fila.titulo, compositor: fila.compositor, archivoNombre }),
-    });
+    if (dueno) {
+      await fetch("/api/emparejar", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titulo: fila.titulo, compositor: fila.compositor, archivoNombre }),
+      });
+    } else {
+      guardarDecisionLocal(fila.titulo, fila.compositor, { archivoNombre });
+    }
   }
 
   async function onCambiarSeleccion(indice: number, archivoNombre: string | null) {
@@ -254,7 +283,7 @@ export default function Home() {
     setFilas((prev) => prev.map((f, i) => (i === indice ? { ...f, recordar } : f)));
     if (recordar) {
       await guardarDecisionSiFija(fila, fila.archivoSeleccionado);
-    } else {
+    } else if (dueno) {
       // Desmarcar "fijar" debe olvidar de verdad la decisión guardada, no solo dejar de
       // sincronizarla — si no, la próxima vez que aparezca esta obra se seguiría aplicando.
       await fetch("/api/emparejar", {
@@ -262,6 +291,8 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ titulo: fila.titulo, compositor: fila.compositor }),
       });
+    } else {
+      borrarDecisionLocal(fila.titulo, fila.compositor);
     }
   }
 
@@ -350,6 +381,12 @@ export default function Home() {
           Sube la ficha del evento (Word), revisa qué partitura va con cada obra, y genera la
           setlist lista para importar en forScore.
         </p>
+        {!dueno && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 self-start">
+            Modo invitado: tus decisiones y preferencias se guardan solo en este navegador, y
+            no puedes subir partituras a la biblioteca en la nube del dueño.
+          </p>
+        )}
       </header>
 
       <section className="border rounded-lg p-4 flex flex-col gap-3">

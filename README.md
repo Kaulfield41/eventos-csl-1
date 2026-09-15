@@ -42,6 +42,16 @@ esta app añade el emparejamiento con partituras reales y la generación del `.4
   desde cualquier dispositivo/navegador, incluidos los que no soportan acceso a carpetas
   locales (Safari, Firefox, móvil).
 
+### Modo dueño vs. modo invitado
+
+Como todavía no hay cuentas de cliente (ver "Estado y roadmap"), toda la app comparte
+un único usuario/contraseña. Si le pasas ese acceso a alguien para que la pruebe, por
+defecto se le trata como **invitado**: sus decisiones de emparejamiento y su preferencia
+de separadores se guardan solo en su propio navegador (nunca en tu Netlify Blobs), no
+puede subir ni borrar nada en la biblioteca en la nube, y no ve las pantallas "Correo"
+ni "Pendientes" (información real del negocio). Tú, como dueño, activas ese perfil una
+vez en tu propio navegador; los detalles de cómo están en `lib/modo-dueno.ts`.
+
 ## Puesta en marcha
 
 ```bash
@@ -115,6 +125,3 @@ explícita para más adelante:
   vender la app a otras empresas de música.
 - Generar y subir el `.4ss` automáticamente (sin cola de revisión) cuando todas las
   obras de una ficha detectada por correo ya tengan partitura fijada de antemano.
-- Guardar decisiones/preferencias en el navegador (en vez de Netlify Blobs) cuando se
-  usa el modo "carpeta local", para poder compartir la misma URL con otra persona sin
-  mezclar sus decisiones con las tuyas.
