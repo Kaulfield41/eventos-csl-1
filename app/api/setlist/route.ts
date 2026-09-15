@@ -32,6 +32,12 @@ export async function POST(request: Request) {
     datosBase64: Buffer.from(fichaPdf).toString("base64"),
   });
 
+  // Si una partitura concreta no está en la biblioteca en la nube (por ejemplo, porque
+  // todavía no se ha terminado de subir), esa obra se omite del .4ss en vez de abortar
+  // la generación entera — no tiene sentido que una sola partitura que falta impida
+  // generar la setlist con todas las demás.
+  const avisos: string[] = [];
+
   for (const entrada of body.entradas) {
     if (entrada.tipo === "separador") {
       entradas.push({ tipo: "separador", titulo: entrada.titulo });
@@ -40,10 +46,8 @@ export async function POST(request: Request) {
     if (!entrada.archivoNombre) continue; // obra sin partitura adjunta: se omite del .4ss
     const datos = await obtenerPartituraCloud(entrada.archivoNombre);
     if (!datos) {
-      return Response.json(
-        { error: `No se encontró en la biblioteca el archivo "${entrada.archivoNombre}".` },
-        { status: 404 }
-      );
+      avisos.push(entrada.archivoNombre);
+      continue;
     }
     entradas.push({
       tipo: "obra",
@@ -60,6 +64,9 @@ export async function POST(request: Request) {
     headers: {
       "Content-Type": "application/octet-stream",
       "Content-Disposition": `attachment; filename="${nombreArchivo}"`,
+      ...(avisos.length > 0
+        ? { "X-Avisos-Partituras-No-Encontradas": encodeURIComponent(avisos.join(", ")) }
+        : {}),
     },
   });
 }

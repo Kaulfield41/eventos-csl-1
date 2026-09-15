@@ -14,6 +14,11 @@ import type { EventoExtraido, MomentoExtraido, ObraExtraida } from "./models";
 
 const MOMENTOS_CONOCIDOS = [
   "recepcion de invitados",
+  "recepcion de feligreses",
+  "recepcion del cuerpo",
+  "recepcion del feretro",
+  "introito",
+  "kyrie",
   "entrada del novio",
   "entrada de la novia",
   "entrada",

@@ -51,6 +51,7 @@ export default function Home() {
   const [filas, setFilas] = useState<FilaObra[]>([]);
   const [cargando, setCargando] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
   const [textoFicha, setTextoFicha] = useState<string | null>(null);
   const [nombreFicha, setNombreFicha] = useState<string | null>(null);
   const [metodoExtraccion, setMetodoExtraccion] = useState<"heuristico" | "ia" | null>(null);
@@ -133,6 +134,7 @@ export default function Home() {
 
   async function onSubirFicha(file: File) {
     setError(null);
+    setAviso(null);
     setEvento(null);
     setFilas([]);
     setTextoFicha(null);
@@ -219,6 +221,7 @@ export default function Home() {
   async function onGenerarSetlist() {
     if (!evento) return;
     setError(null);
+    setAviso(null);
     setCargando("Generando la setlist para forScore...");
     try {
       const titulo = tituloEvento(evento);
@@ -239,6 +242,13 @@ export default function Home() {
           body: JSON.stringify({ evento, entradas: entradasPeticion }),
         });
         if (!respuesta.ok) throw new Error((await respuesta.json()).error ?? "Error generando la setlist.");
+        const avisoHeader = respuesta.headers.get("X-Avisos-Partituras-No-Encontradas");
+        if (avisoHeader) {
+          const nombres = decodeURIComponent(avisoHeader);
+          setAviso(`Se generó la setlist, pero estas partituras no estaban en la biblioteca en la nube y se omitieron: ${nombres}`);
+        } else {
+          setAviso(null);
+        }
         const xml = await respuesta.text();
         descargarTexto(xml, `${titulo.replace(/[\\/:*?"<>|]/g, "_")}.4ss`, "application/octet-stream");
       } else {
@@ -350,6 +360,7 @@ export default function Home() {
 
       {cargando && <p className="text-sm opacity-70">{cargando}</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {aviso && <p className="text-sm text-amber-700">{aviso}</p>}
 
       {evento && (
         <section className="border rounded-lg p-4 flex flex-col gap-4">
