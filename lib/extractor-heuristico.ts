@@ -19,6 +19,7 @@ const MOMENTOS_CONOCIDOS = [
   "recepcion del feretro",
   "introito",
   "kyrie",
+  "ite missa est",
   "entrada del novio",
   "entrada de la novia",
   "entrada",
