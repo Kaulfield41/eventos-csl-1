@@ -93,7 +93,10 @@ export default function Home() {
         if (handle && (await asegurarPermisoLectura(handle))) {
           setCarpetaHandle(handle);
         }
-      } else {
+      } else if (esDuenoAhora) {
+        // La biblioteca en la nube es del dueño: un invitado sin acceso a carpeta local
+        // (Safari, móvil) se queda en modo "local" sin biblioteca en vez de caer a la
+        // nube — no debe leer los archivos del dueño ni por accidente.
         setModo("nube");
       }
       setRestauracionLista(true);
@@ -111,13 +114,17 @@ export default function Home() {
           return;
         }
         setArchivosBiblioteca(await listarPdfs(carpetaHandle));
-      } else {
+      } else if (dueno) {
         const datos = await fetch("/api/biblioteca").then((r) => r.json());
         setArchivosBiblioteca(datos.archivos.map((a: { nombre: string }) => a.nombre));
+      } else {
+        // Un invitado nunca debe leer la biblioteca en la nube del dueño, ni por un
+        // ?modo=nube manual en la URL: se queda sin archivos en vez de consultarla.
+        setArchivosBiblioteca([]);
       }
       setBibliotecaLista(true);
     })();
-  }, [modo, carpetaHandle, restauracionLista]);
+  }, [modo, carpetaHandle, restauracionLista, dueno]);
 
   async function onElegirCarpeta() {
     setError(null);
@@ -383,40 +390,55 @@ export default function Home() {
         </p>
         {!dueno && (
           <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 self-start">
-            Modo invitado: tus decisiones y preferencias se guardan solo en este navegador, y
-            no puedes subir partituras a la biblioteca en la nube del dueño.
+            Modo invitado: tus decisiones y preferencias se guardan solo en este navegador,
+            y no tienes acceso a la biblioteca en la nube del dueño — usa tu propia carpeta
+            local de partituras.
           </p>
         )}
       </header>
 
       <section className="border rounded-lg p-4 flex flex-col gap-3">
         <h2 className="font-medium">1. Biblioteca de partituras</h2>
-        <div className="flex gap-2 text-sm">
-          <button
-            className={`px-3 py-1.5 rounded border ${modo === "local" ? "bg-black text-white" : ""}`}
-            onClick={() => setModo("local")}
-            disabled={!soportaFileSystemAccess()}
-          >
-            Carpeta local
-          </button>
-          <button
-            className={`px-3 py-1.5 rounded border ${modo === "nube" ? "bg-black text-white" : ""}`}
-            onClick={() => setModo("nube")}
-          >
-            Biblioteca en la nube
-          </button>
-        </div>
+        {dueno && (
+          <div className="flex gap-2 text-sm">
+            <button
+              className={`px-3 py-1.5 rounded border ${modo === "local" ? "bg-black text-white" : ""}`}
+              onClick={() => setModo("local")}
+              disabled={!soportaFileSystemAccess()}
+            >
+              Carpeta local
+            </button>
+            <button
+              className={`px-3 py-1.5 rounded border ${modo === "nube" ? "bg-black text-white" : ""}`}
+              onClick={() => setModo("nube")}
+            >
+              Biblioteca en la nube
+            </button>
+          </div>
+        )}
 
-        {!soportaFileSystemAccess() && (
+        {!soportaFileSystemAccess() && dueno && (
           <p className="text-xs text-amber-700">
             Este navegador no permite acceder a una carpeta local (funciona en Chrome/Edge de
             escritorio). Usa la biblioteca en la nube.
           </p>
         )}
 
-        {modo === "local" ? (
+        {!soportaFileSystemAccess() && !dueno && (
+          <p className="text-xs text-amber-700">
+            En modo invitado solo se puede usar una carpeta local de partituras, y este
+            navegador no lo permite (funciona en Chrome/Edge de escritorio). Prueba desde un
+            ordenador con Chrome o Edge.
+          </p>
+        )}
+
+        {modo === "local" || !dueno ? (
           <div className="flex items-center gap-3 text-sm">
-            <button onClick={onElegirCarpeta} className="px-3 py-1.5 rounded border">
+            <button
+              onClick={onElegirCarpeta}
+              disabled={!soportaFileSystemAccess()}
+              className="px-3 py-1.5 rounded border disabled:opacity-40"
+            >
               {carpetaHandle ? "Cambiar carpeta" : "Elegir carpeta de partituras"}
             </button>
             <span className="opacity-70">
