@@ -273,7 +273,7 @@ export default function Home() {
     }
   }
 
-  const listaSinResolver = filas.filter((f) => !f.archivoSeleccionado).length;
+  const listaSinResolver = filas.filter((f) => !f.recordar).length;
 
   return (
     <main className="mx-auto max-w-3xl w-full p-6 flex flex-col gap-6">
@@ -358,7 +358,7 @@ export default function Home() {
             <h2 className="font-medium">3. Revisar obras y partituras</h2>
             <div className="flex items-center gap-3">
               {listaSinResolver > 0 && (
-                <span className="text-xs text-red-600">{listaSinResolver} obra(s) sin partitura</span>
+                <span className="text-xs text-red-600">{listaSinResolver} obra(s) sin fijar</span>
               )}
               <span className="text-xs opacity-60">
                 {metodoExtraccion === "ia" ? "extraído con Claude" : "extraído por reglas (gratis)"}
@@ -418,31 +418,23 @@ function FilaObraUI({
   onCambiarRecordar: (recordar: boolean) => void;
 }) {
   const candidatos: CandidatoMatch[] = fila.resultado.tipo === "ambiguo" ? fila.resultado.candidatos : [];
-  const esAmbiguo = fila.resultado.tipo === "ambiguo";
-  // Lo que importa destacar es si, tal cual está ahora, esta obra se quedaría sin
-  // partitura en la setlist final — no solo si la coincidencia original era dudosa,
-  // porque la selección puede haber cambiado desde entonces (a mano, o al desmarcar).
-  const sinPartitura = !fila.archivoSeleccionado;
+  // Lo que se destaca es si la elección todavía no está fijada para siempre — no si hay
+  // o no una partitura seleccionada ahora mismo (eso ya se ve en el propio buscador).
+  const sinFijar = !fila.recordar;
 
   return (
-    <div
-      className={`flex flex-col gap-1 rounded border p-2 text-sm ${
-        sinPartitura ? "border-red-400 bg-red-50 dark:bg-red-950/30" : esAmbiguo ? "border-amber-400" : ""
-      }`}
-    >
+    <div className={`flex flex-col gap-1 rounded border p-2 text-sm ${sinFijar ? "border-red-400 bg-red-50 dark:bg-red-950/30" : ""}`}>
       <div className="flex items-start justify-between gap-2">
         <span className="min-w-0 break-words">
           {fila.titulo}
           {fila.compositor ? ` — ${fila.compositor}` : ""}
         </span>
-        <span className={`shrink-0 whitespace-nowrap text-xs ${sinPartitura ? "text-red-600" : "opacity-60"}`}>
-          {sinPartitura
-            ? "sin partitura"
-            : fila.resultado.tipo === "automatico"
-              ? "coincidencia automática"
-              : fila.resultado.tipo === "recordado"
-                ? "elección recordada"
-                : "varias posibles — elige una"}
+        <span className={`shrink-0 whitespace-nowrap text-xs ${sinFijar ? "text-red-600" : "opacity-60"}`}>
+          {fila.resultado.tipo === "automatico" && "coincidencia automática"}
+          {fila.resultado.tipo === "recordado" && "elección recordada"}
+          {fila.resultado.tipo === "ambiguo" && "varias posibles — elige una"}
+          {fila.resultado.tipo === "sin_match" && "sin partitura encontrada"}
+          {sinFijar ? " · sin fijar" : ""}
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-3">
