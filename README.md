@@ -1,4 +1,4 @@
-# Alborada · Setlists para forScore
+# Eventos-csl-1 para forScore
 
 Convierte la ficha de un evento musical (Word, con el programa organizado por momentos)
 en una setlist de forScore (`.4ss`) lista para importar, con las partituras (PDF) ya
