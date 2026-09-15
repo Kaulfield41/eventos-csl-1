@@ -8,11 +8,11 @@ musical (Word, con el programa organizado por momentos) en una setlist de forSco
 `../App obras Alborada/` (extracción y conteo de obras), pero es un proyecto
 independiente — no reutiliza su código, solo su idea y sus datos de referencia.
 
-Producción: **https://alborada-csl-1.netlify.app**
+Ver `README.md` para cómo funciona la app desde el punto de vista del usuario.
 
-Ver `README.md` para cómo funciona la app desde el punto de vista del usuario, y
-`/Users/csl/.claude/plans/valiant-launching-wirth.md` para el plan original y el del
-agente de correo (Fase 2), con el razonamiento detrás de cada decisión.
+Toda la web (páginas y API) exige usuario/contraseña (`proxy.ts`, variables de entorno
+`APP_USERNAME`/`APP_PASSWORD`) — no hay ningún sistema de cuentas todavía, así que esto
+es lo mínimo para no dejarla abierta a cualquiera.
 
 ## Cómo se construyó (para orientarte rápido en el código)
 

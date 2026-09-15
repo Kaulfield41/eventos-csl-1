@@ -87,17 +87,34 @@ npx tsx scripts/test-cabecera.ts "ruta/a/una/ficha.docx" # tipo_evento/fecha/hor
 npx tsx scripts/test-ficha-pdf.ts "ruta/a/una/ficha.docx" # genera el PDF-resumen de una ficha real
 ```
 
+## Agente de correo (opcional)
+
+Además de subir la ficha a mano, la app puede vigilar sola una cuenta de Gmail y
+dejar las fichas nuevas listas para revisar en `/pendientes` — nunca genera ni sube
+un `.4ss` sin que una persona lo confirme. Ver `/correo` en la app para conectarlo.
+
+Configuración necesaria (variables de entorno, además de `ANTHROPIC_API_KEY`):
+
+```bash
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+```
+
+Credenciales OAuth de un proyecto de Google Cloud Console (API de Gmail activada,
+pantalla de consentimiento en modo "Testing", con la cuenta a vigilar añadida como
+usuario de prueba, y `https://<tu-dominio>/api/correo/callback` como redirect URI
+autorizado). La función programada (`netlify/functions/revisar-correo.mts`) revisa
+la bandeja cuatro veces al día — ajusta el cron en ese archivo a tu franja horaria.
+
 ## Estado y roadmap
 
 Primera versión pensada para el uso propio de Alborada (sin cuentas de cliente
 todavía, pero con el modelo de datos ya preparado para añadirlas). Pendiente de forma
 explícita para más adelante:
 
-- **Vigilancia de correo electrónico**: revisar automáticamente si ha llegado una ficha
-  nueva por email y dejarla lista para revisar en la app, sin tener que subirla a mano.
 - **Multi-cliente**: login, biblioteca y preferencias aisladas por cliente, pensado para
   vender la app a otras empresas de música.
 - Migrar de Netlify Blobs a Netlify DB (Postgres) si el historial de eventos crece
   mucho o hacen falta consultas más ricas en la pantalla de estadísticas.
-
-Ver `/Users/csl/.claude/plans/valiant-launching-wirth.md` para el plan original con más contexto.
+- Generar y subir el `.4ss` automáticamente (sin cola de revisión) cuando todas las
+  obras de una ficha detectada por correo ya tengan partitura fijada de antemano.

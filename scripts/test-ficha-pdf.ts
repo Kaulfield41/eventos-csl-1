@@ -10,7 +10,7 @@ async function main() {
   const evento = extraerEventoHeuristico(texto);
   console.log("Título:", tituloEvento(evento));
   const pdf = await construirFichaPdf(evento);
-  const salida = "/Users/csl/Desktop/Apps/Apps Alborada/alborada-setlists/scripts/ficha-resumen-test.pdf";
+  const salida = new URL("ficha-resumen-test.pdf", import.meta.url).pathname;
   writeFileSync(salida, pdf);
   console.log(`PDF generado (${pdf.length} bytes): ${salida}`);
 }

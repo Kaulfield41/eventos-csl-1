@@ -46,3 +46,6 @@ next-env.d.ts
 
 # Generado por `netlify dev` (runtime Deno de las edge functions), no aporta nada versionado
 deno.lock
+
+# Salida de scripts/test-ficha-pdf.ts (fichas reales de prueba, nunca deben subirse)
+scripts/*.pdf
