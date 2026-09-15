@@ -348,7 +348,7 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-3xl w-full p-6 flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Setlists para forScore</h1>
+        <h1 className="text-2xl font-semibold">Eventos-csl-1 para forScore</h1>
         <p className="text-sm opacity-70">
           Sube la ficha del evento (Word), revisa qué partitura va con cada obra, y genera la
           setlist lista para importar en forScore.

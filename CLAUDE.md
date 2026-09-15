@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# Setlists para forScore
+# Eventos-csl-1 para forScore
 
 App web (Next.js, desplegada en Netlify) que convierte la "ficha" de un evento
 musical (Word, con el programa organizado por momentos) en una setlist de forScore
