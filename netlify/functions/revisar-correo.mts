@@ -17,7 +17,22 @@ import {
  * heurística que la subida manual (nunca llama a Claude), y deja el resultado en la
  * cola de "Pendientes de revisar" — nunca genera ni sube un .4ss sola.
  */
+const HORAS_REVISION_MADRID = [9, 13, 17, 21];
+
+/** Hora local de Madrid ahora mismo (0-23), ya con el cambio de horario de verano/invierno aplicado. */
+function horaActualEnMadrid(): number {
+  return Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "numeric", hour12: false }).format(new Date()));
+}
+
 const revisarCorreo = async () => {
+  // El cron se dispara cada hora en punto (ver `schedule` más abajo) y aquí se descarta
+  // si no toca revisar todavía: fijar directamente las horas UTC en el cron rompería con
+  // el cambio de horario de verano/invierno, así que la franja horaria se calcula en cada
+  // ejecución a partir de la hora real de Madrid.
+  if (!HORAS_REVISION_MADRID.includes(horaActualEnMadrid())) {
+    return new Response("ok (fuera de horario)");
+  }
+
   const config = await obtenerConfiguracionCorreo();
   if (!config || !config.etiquetaId) {
     console.log("[revisar-correo] Sin cuenta conectada o sin etiqueta elegida todavía; nada que hacer.");
@@ -69,9 +84,7 @@ const revisarCorreo = async () => {
 export default revisarCorreo;
 
 export const config: Config = {
-  // 9:00, 13:00, 17:00 y 21:00 hora de Madrid. Netlify evalúa el cron en UTC, así que
-  // esto son las 7,11,15,19 en horario de verano (CEST, UTC+2) — pendiente de ajustar
-  // a 8,12,16,20 en horario de invierno (CET, UTC+1) cuando llegue, o de confirmar si
-  // Netlify permite fijar una zona horaria en vez de convertir a mano.
-  schedule: "0 7,11,15,19 * * *",
+  // Se dispara cada hora en punto; la función decide arriba si toca revisar de verdad
+  // (9:00/13:00/17:00/21:00 hora de Madrid, ajustado ya al horario de verano/invierno).
+  schedule: "0 * * * *",
 };

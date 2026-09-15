@@ -56,11 +56,14 @@ export default function Home() {
   const [nombreFicha, setNombreFicha] = useState<string | null>(null);
   const [metodoExtraccion, setMetodoExtraccion] = useState<"heuristico" | "ia" | null>(null);
   const [bibliotecaLista, setBibliotecaLista] = useState(false);
+  const [restauracionLista, setRestauracionLista] = useState(false);
   const [pendienteId, setPendienteId] = useState<string | null>(null);
   const pendienteCargado = useRef(false);
 
   // Al arrancar: recupera la carpeta local ya elegida en una sesión anterior (si la hay)
-  // y carga la preferencia de separadores de momento.
+  // y carga la preferencia de separadores de momento. `restauracionLista` marca cuándo
+  // termina este intento, para que la recarga de la biblioteca (siguiente efecto) no
+  // arranque antes con `carpetaHandle` todavía a null y deje la lista vacía a medias.
   useEffect(() => {
     (async () => {
       const preferencias = await fetch("/api/preferencias").then((r) => r.json());
@@ -74,11 +77,13 @@ export default function Home() {
       } else {
         setModo("nube");
       }
+      setRestauracionLista(true);
     })();
   }, []);
 
   // Recarga la lista de archivos disponibles cuando cambia el modo o la carpeta/biblioteca.
   useEffect(() => {
+    if (!restauracionLista) return;
     (async () => {
       if (modo === "local") {
         if (!carpetaHandle) {
@@ -93,7 +98,7 @@ export default function Home() {
       }
       setBibliotecaLista(true);
     })();
-  }, [modo, carpetaHandle]);
+  }, [modo, carpetaHandle, restauracionLista]);
 
   async function onElegirCarpeta() {
     setError(null);
@@ -326,6 +331,10 @@ export default function Home() {
       // generando la setlist desaparece de la cola.
       if (pendienteId) {
         await fetch(`/api/pendientes/${pendienteId}`, { method: "DELETE" });
+        // Quita "?pendiente=..." de la URL: si no, un refresco posterior intenta
+        // recargar un pendiente que ya no existe y muestra un error falso.
+        window.history.replaceState(null, "", window.location.pathname);
+        setPendienteId(null);
       }
     } catch (e) {
       setError((e as Error).message);

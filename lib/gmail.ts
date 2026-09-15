@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import type { gmail_v1 } from "googleapis";
 import type { Credentials } from "google-auth-library";
 
 /**
@@ -112,24 +113,45 @@ export async function buscarMensajesConAdjunto(
   const auth = clienteConTokens(tokens);
   const gmail = google.gmail({ version: "v1", auth });
 
-  const { data: listado } = await gmail.users.messages.list({
-    userId: "me",
-    labelIds: [etiquetaId],
-    q: "has:attachment (filename:docx OR filename:doc)",
-    maxResults: 25,
-  });
+  // Gmail solo devuelve 100 mensajes como mucho por página: se recorren todas las
+  // páginas (con un tope de seguridad) para no perder para siempre los mensajes más
+  // antiguos de un backlog grande — cada uno ya se descarta enseguida si está en
+  // `idsYaProcesados`, así que en el caso normal (poco backlog) esto es una sola página.
+  const referencias: gmail_v1.Schema$Message[] = [];
+  let pageToken: string | undefined;
+  const TOPE_PAGINAS = 20;
+  for (let pagina = 0; pagina < TOPE_PAGINAS; pagina++) {
+    const { data: listado } = await gmail.users.messages.list({
+      userId: "me",
+      labelIds: [etiquetaId],
+      q: "has:attachment (filename:docx OR filename:doc)",
+      maxResults: 100,
+      pageToken,
+    });
+    referencias.push(...(listado.messages ?? []));
+    if (!listado.nextPageToken) break;
+    pageToken = listado.nextPageToken;
+  }
 
   const resultado: MensajeConAdjunto[] = [];
-  for (const referencia of listado.messages ?? []) {
+  for (const referencia of referencias) {
     if (!referencia.id || idsYaProcesados.has(referencia.id)) continue;
 
-    const { data: mensaje } = await gmail.users.messages.get({ userId: "me", id: referencia.id, format: "full" });
-    const cabeceras = mensaje.payload?.headers ?? [];
+    // Primero solo las cabeceras (barato): si el asunto no cumple el prefijo, se descarta
+    // sin gastar la llamada "full" (que trae también los adjuntos en base64).
+    const { data: cabecera } = await gmail.users.messages.get({
+      userId: "me",
+      id: referencia.id,
+      format: "metadata",
+      metadataHeaders: ["Subject", "From"],
+    });
+    const cabeceras = cabecera.payload?.headers ?? [];
     const asunto = cabeceras.find((h) => h.name === "Subject")?.value ?? "(sin asunto)";
     const remitente = cabeceras.find((h) => h.name === "From")?.value ?? "";
 
     if (prefijoAsunto && !asunto.toLowerCase().startsWith(prefijoAsunto.toLowerCase())) continue;
 
+    const { data: mensaje } = await gmail.users.messages.get({ userId: "me", id: referencia.id, format: "full" });
     const adjuntos = extraerAdjuntosDocx(mensaje.payload);
     if (adjuntos.length === 0) continue;
 
