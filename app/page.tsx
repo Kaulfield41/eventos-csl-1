@@ -335,7 +335,6 @@ export default function Home() {
         <h2 className="font-medium">2. Ficha del evento</h2>
         <input
           type="file"
-          accept=".docx,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
           onChange={(e) => e.target.files?.[0] && onSubirFicha(e.target.files[0])}
           className="text-sm"
         />
@@ -596,7 +595,6 @@ function GestionBibliotecaNube({ archivos, onCambiado }: { archivos: string[]; o
     <div className="flex flex-col gap-2 text-sm">
       <input
         type="file"
-        accept=".pdf,application/pdf"
         multiple
         disabled={!!progreso}
         onChange={(e) => e.target.files && onSubirArchivos(e.target.files)}
