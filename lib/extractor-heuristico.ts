@@ -103,6 +103,22 @@ function pareceMomentoConocido(normalizada: string): boolean {
 }
 
 /**
+ * Una obra puede titularse igual que un momento real (ej. la pieza "Aleluya" vs. el
+ * momento litúrgico "Aleluya"): si la línea lleva coma y el último trozo es un compositor
+ * de verdad (termina como un nombre, y ese trozo en sí NO es otro momento conocido — para
+ * no rechazar líneas como "Rito del Matrimonio, Consentimiento", que encadenan dos momentos
+ * reales), es una obra con compositor, no el título de una parte.
+ */
+function pareceObraConCompositor(lineaOriginal: string): boolean {
+  const sinParentesisFinal = lineaOriginal.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  const partes = sinParentesisFinal.split(",").map((p) => p.trim()).filter(Boolean);
+  if (partes.length < 2) return false;
+  const ultimo = partes[partes.length - 1];
+  if (!terminaComoNombre(ultimo)) return false;
+  return !pareceMomentoConocido(normalizarLinea(ultimo));
+}
+
+/**
  * `dentroDelPrograma` acota la señal de negrita a después de que ya haya arrancado el
  * programa musical (detectado por vocabulario, como antes): antes de eso, en la cabecera
  * de la ficha también puede haber texto en negrita (título del documento, datos en negrita
@@ -116,6 +132,7 @@ function esMomento(
 ): boolean {
   if (CARACTERES_COMILLA.test(lineaOriginal)) return false;
   if (normalizada.split(" ").length > 8) return false;
+  if (pareceObraConCompositor(lineaOriginal)) return false;
   if (pareceMomentoConocido(normalizada)) return true;
   return opts.dentroDelPrograma && opts.negrita;
 }
