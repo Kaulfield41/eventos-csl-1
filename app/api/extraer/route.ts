@@ -1,4 +1,4 @@
-import { extraerTextoDocx } from "@/lib/docx";
+import { extraerLineasDocx, lineasDeTexto, type LineaFicha } from "@/lib/docx";
 import { extraerTextoDoc } from "@/lib/doc-legacy";
 import { extraerEventoHeuristico } from "@/lib/extractor-heuristico";
 
@@ -27,8 +27,15 @@ export async function POST(request: Request) {
   const buffer = Buffer.from(await ficha.arrayBuffer());
 
   let texto: string;
+  let lineas: LineaFicha[];
   try {
-    texto = extension === "docx" ? await extraerTextoDocx(buffer) : await extraerTextoDoc(buffer);
+    if (extension === "docx") {
+      lineas = await extraerLineasDocx(buffer);
+      texto = lineas.map((l) => l.texto).join("\n");
+    } else {
+      texto = await extraerTextoDoc(buffer);
+      lineas = lineasDeTexto(texto); // .doc antiguo: sin formato disponible, negrita siempre false
+    }
   } catch (error) {
     return Response.json(
       { error: `No se pudo leer el documento: ${(error as Error).message}` },
@@ -40,7 +47,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "El documento no contiene texto reconocible." }, { status: 400 });
   }
 
-  const evento = extraerEventoHeuristico(texto);
+  const evento = extraerEventoHeuristico(lineas);
 
   return Response.json({ texto, evento, metodo: "heuristico" });
 }

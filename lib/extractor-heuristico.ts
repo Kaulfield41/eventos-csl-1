@@ -1,8 +1,12 @@
 import type { EventoExtraido, MomentoExtraido, ObraExtraida } from "./models";
+import type { LineaFicha } from "./docx";
 
 /**
  * Extracción alternativa SIN llamada a ningún modelo de IA: por reglas, aprovechando que
- * (a) los "momentos" de una boda/funeral salen de un vocabulario bastante cerrado, y
+ * (a) los "momentos" de una boda/funeral salen de un vocabulario bastante cerrado más una
+ *     señal de formato (negrita: en las fichas reales, el título de cada parte del evento
+ *     va siempre en negrita, a veces también en otro color — el color no se usa porque no
+ *     es consistente entre fichas, pero la negrita sí), y
  * (b) las líneas de obra casi siempre llevan comillas y/o una coma antes del compositor.
  *
  * No pretende ser tan fiable como la extracción con Claude (lib/extractor.ts) — en
@@ -94,10 +98,26 @@ function esLineaDeTabla(lineaOriginal: string): boolean {
 
 const CARACTERES_COMILLA = /["“”'’‘]/;
 
-function esMomento(lineaOriginal: string, normalizada: string): boolean {
+function pareceMomentoConocido(normalizada: string): boolean {
+  return MOMENTOS_CONOCIDOS.some((m) => normalizada === m || normalizada.startsWith(m + " ") || normalizada.includes(m));
+}
+
+/**
+ * `dentroDelPrograma` acota la señal de negrita a después de que ya haya arrancado el
+ * programa musical (detectado por vocabulario, como antes): antes de eso, en la cabecera
+ * de la ficha también puede haber texto en negrita (título del documento, datos en negrita
+ * puntual...) que no es el título de ninguna parte, así que negrita sola no basta para
+ * decidir dónde empieza el programa — solo para reconocer partes nuevas una vez ya dentro.
+ */
+function esMomento(
+  lineaOriginal: string,
+  normalizada: string,
+  opts: { negrita: boolean; dentroDelPrograma: boolean }
+): boolean {
   if (CARACTERES_COMILLA.test(lineaOriginal)) return false;
   if (normalizada.split(" ").length > 8) return false;
-  return MOMENTOS_CONOCIDOS.some((m) => normalizada === m || normalizada.startsWith(m + " ") || normalizada.includes(m));
+  if (pareceMomentoConocido(normalizada)) return true;
+  return opts.dentroDelPrograma && opts.negrita;
 }
 
 const MESES: Record<string, number> = {
@@ -135,14 +155,14 @@ function extraerHora(linea: string): string | null {
   return m ? `${m[1].padStart(2, "0")}:${m[2]}` : null;
 }
 
-function extraerCabecera(lineas: string[]): { tipo_evento: string | null; fecha: string | null; hora: string | null } {
+function extraerCabecera(lineas: LineaFicha[]): { tipo_evento: string | null; fecha: string | null; hora: string | null } {
   let tipo_evento: string | null = null;
   let fecha: string | null = null;
   let hora: string | null = null;
 
-  for (const linea of lineas) {
+  for (const { texto: linea } of lineas) {
     const normalizada = normalizarLinea(linea);
-    if (esMomento(linea, normalizada)) break; // ya terminó la cabecera
+    if (esMomento(linea, normalizada, { negrita: false, dentroDelPrograma: false })) break; // ya terminó la cabecera
 
     if (tipo_evento === null && normalizada.startsWith("tipo de evento")) {
       const m = linea.match(/tipo de evento\s*:\s*(.+)/i);
@@ -202,25 +222,24 @@ function partirObra(lineaOriginal: string): ObraExtraida | null {
   return { titulo: comillas ? comillas[1] : sinParentesisFinal, compositor: null };
 }
 
-export function extraerEventoHeuristico(texto: string): EventoExtraido {
-  const lineas = texto.split("\n").map((l) => l.trim()).filter(Boolean);
+export function extraerEventoHeuristico(lineas: LineaFicha[]): EventoExtraido {
   const cabecera = extraerCabecera(lineas);
 
   const momentos: MomentoExtraido[] = [];
   let momentoActual: MomentoExtraido | null = null;
   let dentroDelPrograma = false;
 
-  for (const linea of lineas) {
+  for (const { texto: linea, negrita } of lineas) {
     const normalizada = normalizarLinea(linea);
 
     if (esLineaDeTabla(linea) || esFinDelPrograma(normalizada)) break;
     if (!dentroDelPrograma) {
       if (esLineaDeCabecera(normalizada)) continue;
-      if (!esMomento(linea, normalizada)) continue; // sigue en la cabecera hasta el primer momento reconocido
+      if (!esMomento(linea, normalizada, { negrita: false, dentroDelPrograma: false })) continue; // sigue en la cabecera hasta el primer momento reconocido
       dentroDelPrograma = true;
     }
 
-    if (esMomento(linea, normalizada)) {
+    if (esMomento(linea, normalizada, { negrita, dentroDelPrograma })) {
       momentoActual = { nombre: linea, obras: [] };
       momentos.push(momentoActual);
     } else if (momentoActual) {

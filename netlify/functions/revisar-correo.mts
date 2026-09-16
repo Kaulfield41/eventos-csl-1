@@ -1,6 +1,6 @@
 import type { Config } from "@netlify/functions";
 import { buscarMensajesConAdjunto, descargarAdjunto } from "../../lib/gmail";
-import { extraerTextoDocx } from "../../lib/docx";
+import { extraerLineasDocx, lineasDeTexto } from "../../lib/docx";
 import { extraerTextoDoc } from "../../lib/doc-legacy";
 import { extraerEventoHeuristico } from "../../lib/extractor-heuristico";
 import {
@@ -53,10 +53,11 @@ const revisarCorreo = async () => {
       for (const adjunto of mensaje.adjuntos) {
         const buffer = await descargarAdjunto(config.tokens, mensaje.id, adjunto.attachmentId);
         const esDoc = adjunto.nombre.toLowerCase().endsWith(".doc");
-        const texto = esDoc ? await extraerTextoDoc(buffer) : await extraerTextoDocx(buffer);
+        const lineas = esDoc ? lineasDeTexto(await extraerTextoDoc(buffer)) : await extraerLineasDocx(buffer);
+        const texto = lineas.map((l) => l.texto).join("\n");
         if (!texto.trim()) continue;
 
-        const evento = extraerEventoHeuristico(texto);
+        const evento = extraerEventoHeuristico(lineas);
         await guardarPendiente({
           mensajeId: mensaje.id,
           archivoOrigen: adjunto.nombre,
