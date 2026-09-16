@@ -57,6 +57,20 @@ es lo mínimo para no dejarla abierta a cualquiera.
 - **Modo dueño vs. invitado** (`lib/modo-dueno.ts`, `lib/decisiones-locales.ts`): dos
   perfiles de uso sin necesitar cuentas reales todavía. El cómo y el porqué están
   comentados en esos dos archivos — léelos antes de tocar nada relacionado.
+- **Agente de correo** (`netlify/functions/revisar-correo.mts`, `lib/gmail.ts`): función
+  programada de Netlify que revisa la cuenta de Gmail conectada, extrae fichas nuevas con
+  la misma heurística que la subida manual, y las deja en Pendientes — nunca genera ni
+  sube un `.4ss` sola. Si **todas** las obras de la ficha ya tienen una decisión de
+  emparejamiento fijada de antes (archivo real o "sin partitura" explícito —
+  `lib/store.ts`, `todasLasObrasResueltas`), además responde al correo original (mismo
+  hilo, `In-Reply-To`/`References`) avisando de que no hace falta revisar el
+  emparejamiento; la ficha se sigue guardando en Pendientes igual, es solo un aviso de
+  cortesía. Requiere el alcance `gmail.send` además del `gmail.readonly` original —
+  cualquier cuenta conectada antes de este cambio necesita reconectarse en `/correo` para
+  que el envío funcione (falla en silencio, solo con un log, mientras tanto). El texto de
+  la respuesta ("Hola, Gonzalo: Ficha recibida, todo ok. Un abrazo.") lleva un nombre real
+  a propósito — es quien manda las fichas, decisión explícita del usuario de dejarlo
+  fijo en el código en vez de en una variable de entorno.
 - **No hay historial de eventos ni pantalla de estadísticas, a propósito**: existieron
   (`/estadisticas`, `guardarEventoHistorial` en `lib/store.ts`) y se quitaron — las
   estadísticas del negocio vivirán en otra app aparte. No reintroducir esa persistencia

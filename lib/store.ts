@@ -72,6 +72,22 @@ export async function borrarDecision(titulo: string, compositor: string | null):
   await storeDecisiones().delete(clave);
 }
 
+/**
+ * ¿Tiene cada obra del evento una decisión ya guardada (archivo real, o fijada
+ * explícitamente como "sin partitura")? Puro: recibe las decisiones ya resueltas, no
+ * toca Blobs — usado por el agente de correo para saber si avisar por email de que una
+ * ficha detectada no necesita revisión de emparejamiento (ver netlify/functions/
+ * revisar-correo.mts). Un evento sin obras nunca cuenta como "resuelto".
+ */
+export function todasLasObrasResueltas(
+  evento: EventoExtraido,
+  decisiones: Map<string, DecisionEmparejamiento>
+): boolean {
+  const obras = evento.momentos.flatMap((m) => m.obras);
+  if (obras.length === 0) return false;
+  return obras.every((o) => decisiones.has(claveObra(o.titulo, o.compositor)));
+}
+
 export async function obtenerPreferencias(): Promise<Preferencias> {
   const valor = await storePreferencias().get("global", { type: "json" });
   return { ...PREFERENCIAS_POR_DEFECTO, ...((valor as Partial<Preferencias>) ?? {}) };

@@ -3,13 +3,18 @@ import type { gmail_v1 } from "googleapis";
 import type { Credentials } from "google-auth-library";
 
 /**
- * Integración con Gmail (OAuth de solo lectura) para el agente de correo: conectar
- * una cuenta, listar sus etiquetas, y buscar mensajes nuevos con un adjunto
- * .docx/.doc dentro de la etiqueta elegida. Nunca escribe nada en el correo (alcance
- * `gmail.readonly`).
+ * Integración con Gmail para el agente de correo: conectar una cuenta, listar sus
+ * etiquetas, buscar mensajes nuevos con un adjunto .docx/.doc dentro de la etiqueta
+ * elegida, y descargarlos. También puede responder (`enviarRespuesta`) cuando una ficha
+ * detectada ya está 100% resuelta de memoria — el único caso en que este agente escribe
+ * en el correo, y nunca genera ni sube nada por su cuenta (ver netlify/functions/
+ * revisar-correo.mts).
  */
 
-const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
+const SCOPES = [
+  "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/gmail.send",
+];
 
 /**
  * URL de callback a partir de la petición entrante. Usa las cabeceras de host/protocolo
@@ -78,6 +83,9 @@ export interface AdjuntoGmail {
 
 export interface MensajeConAdjunto {
   id: string;
+  threadId: string;
+  /** Cabecera RFC "Message-ID" del mensaje (con los < >), para enlazar una respuesta al hilo. */
+  messageIdHeader: string;
   asunto: string;
   remitente: string;
   fechaIso: string;
@@ -143,11 +151,12 @@ export async function buscarMensajesConAdjunto(
       userId: "me",
       id: referencia.id,
       format: "metadata",
-      metadataHeaders: ["Subject", "From"],
+      metadataHeaders: ["Subject", "From", "Message-ID"],
     });
     const cabeceras = cabecera.payload?.headers ?? [];
     const asunto = cabeceras.find((h) => h.name === "Subject")?.value ?? "(sin asunto)";
     const remitente = cabeceras.find((h) => h.name === "From")?.value ?? "";
+    const messageIdHeader = cabeceras.find((h) => h.name?.toLowerCase() === "message-id")?.value ?? "";
 
     if (prefijoAsunto && !asunto.toLowerCase().startsWith(prefijoAsunto.toLowerCase())) continue;
 
@@ -157,6 +166,8 @@ export async function buscarMensajesConAdjunto(
 
     resultado.push({
       id: referencia.id,
+      threadId: mensaje.threadId ?? referencia.id,
+      messageIdHeader,
       asunto,
       remitente,
       fechaIso: mensaje.internalDate ? new Date(Number(mensaje.internalDate)).toISOString() : new Date().toISOString(),
@@ -171,4 +182,59 @@ export async function descargarAdjunto(tokens: Credentials, messageId: string, a
   const gmail = google.gmail({ version: "v1", auth });
   const { data } = await gmail.users.messages.attachments.get({ userId: "me", messageId, id: attachmentId });
   return Buffer.from(data.data ?? "", "base64url");
+}
+
+function codificarAsuntoUtf8(asunto: string): string {
+  return `=?UTF-8?B?${Buffer.from(asunto, "utf-8").toString("base64")}?=`;
+}
+
+function conAngulos(messageId: string): string {
+  const recortado = messageId.trim();
+  return recortado.startsWith("<") ? recortado : `<${recortado}>`;
+}
+
+export interface OpcionesRespuesta {
+  threadId: string;
+  /** Cabecera Message-ID cruda del mensaje original (con o sin < >). */
+  messageIdOriginal: string;
+  /** "Nombre <email>", tal cual viene de MensajeConAdjunto.remitente. */
+  destinatario: string;
+  /** La propia cuenta conectada (config.cuenta). */
+  remitenteCuenta: string;
+  asuntoOriginal: string;
+  /** Texto plano. */
+  cuerpo: string;
+}
+
+/**
+ * Responde (reply, no un correo nuevo) dentro del mismo hilo que el mensaje original —
+ * único caso en que este módulo escribe en el correo (alcance `gmail.send`). Se usa solo
+ * cuando una ficha detectada ya está 100% resuelta de memoria; nunca genera ni adjunta
+ * ningún `.4ss` (ver netlify/functions/revisar-correo.mts).
+ */
+export async function enviarRespuesta(tokens: Credentials, opts: OpcionesRespuesta): Promise<void> {
+  const auth = clienteConTokens(tokens);
+  const gmail = google.gmail({ version: "v1", auth });
+
+  const asunto = /^re:/i.test(opts.asuntoOriginal) ? opts.asuntoOriginal : `Re: ${opts.asuntoOriginal}`;
+  const messageIdOriginal = conAngulos(opts.messageIdOriginal);
+
+  const cabeceras = [
+    `To: ${opts.destinatario}`,
+    `From: ${opts.remitenteCuenta}`,
+    `Subject: ${codificarAsuntoUtf8(asunto)}`,
+    `In-Reply-To: ${messageIdOriginal}`,
+    `References: ${messageIdOriginal}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: text/plain; charset="UTF-8"`,
+  ].join("\r\n");
+  const mensajeCrudo = `${cabeceras}\r\n\r\n${opts.cuerpo}`;
+
+  await gmail.users.messages.send({
+    userId: "me",
+    requestBody: {
+      threadId: opts.threadId,
+      raw: Buffer.from(mensajeCrudo, "utf-8").toString("base64url"),
+    },
+  });
 }
