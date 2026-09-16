@@ -96,7 +96,15 @@ restantes en el dashboard de Netlify (Billing → Usage) antes de un despliegue 
 dudas.
 
 ```bash
-npx tsc --noEmit -p tsconfig.json && npx eslint .   # antes de cualquier commit
-npm run build                                        # antes de desplegar
-netlify deploy --prod                                 # despliegue real
+npx tsc --noEmit -p tsconfig.json && npx eslint . && npm test   # antes de cualquier commit
+npm run build                                                     # antes de desplegar
+netlify deploy --prod                                              # despliegue real
 ```
+
+**Suite de tests con Vitest** (`lib/*.test.ts`, `npm test`): cubre solo los módulos puros
+de `lib/` (extracción heurística, matching, `.4ss`, modelos, PDF-resumen) — nada de UI ni
+de los módulos con red/Blobs/DOM (`lib/store.ts`, `lib/gmail.ts`, `lib/extractor.ts`...).
+Los fixtures son siempre inventados (el repo es público): para `.docx` sintéticos se usa
+`lib/test-helpers/docx-fixture.ts` en vez de un archivo real. Los `scripts/test-*.ts`
+siguen aparte, tal cual — sirven para depurar a ojo contra una ficha real que aportes tú
+mismo, algo que la suite automática no puede hacer.
