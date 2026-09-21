@@ -100,20 +100,26 @@ npx tsx scripts/test-ficha-pdf.ts "ruta/a/una/ficha.docx" # genera el PDF-resume
 
 Además de subir la ficha a mano, la app puede vigilar sola una cuenta de Gmail y
 dejar las fichas nuevas listas para revisar en `/pendientes` — nunca genera ni sube
-un `.4ss` sin que una persona lo confirme. Ver `/correo` en la app para conectarlo.
+un `.4ss` sin que una persona lo confirme. Si todas las obras de una ficha detectada
+ya tienen partitura fijada de un evento anterior, además responde al correo original
+avisando de que no hace falta repasar el emparejamiento (la ficha se sigue guardando
+en Pendientes igual, es solo un aviso). Ver `/correo` en la app para conectarlo.
 
 Configuración necesaria (variables de entorno, además de `ANTHROPIC_API_KEY`):
 
 ```bash
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
+GMAIL_TOKEN_ENCRYPTION_KEY=... # 32 bytes en base64, ver .env.example para cómo generarla
 ```
 
 Credenciales OAuth de un proyecto de Google Cloud Console (API de Gmail activada,
-pantalla de consentimiento en modo "Testing", con la cuenta a vigilar añadida como
-usuario de prueba, y `https://<tu-dominio>/api/correo/callback` como redirect URI
-autorizado). La función programada (`netlify/functions/revisar-correo.mts`) revisa
-la bandeja cuatro veces al día — ajusta el cron en ese archivo a tu franja horaria.
+alcance de lectura y de envío, pantalla de consentimiento en modo "Testing", con la
+cuenta a vigilar añadida como usuario de prueba, y
+`https://<tu-dominio>/api/correo/callback` como redirect URI autorizado). El token
+se guarda cifrado en reposo. La función programada
+(`netlify/functions/revisar-correo.mts`) revisa la bandeja cuatro veces al día —
+ajusta el cron en ese archivo a tu franja horaria.
 
 ## Estado y roadmap
 
@@ -122,6 +128,7 @@ todavía, pero con el modelo de datos ya preparado para añadirlas). Pendiente d
 explícita para más adelante:
 
 - **Multi-cliente**: login, biblioteca y preferencias aisladas por cliente, pensado para
-  vender la app a otras empresas de música.
+  vender la app a otras empresas de música. Sin fecha concreta, a futuro.
 - Generar y subir el `.4ss` automáticamente (sin cola de revisión) cuando todas las
-  obras de una ficha detectada por correo ya tengan partitura fijada de antemano.
+  obras de una ficha detectada por correo ya tengan partitura fijada de antemano — hoy
+  solo se avisa por email en ese caso, la ficha sigue pasando por Pendientes.
