@@ -2,6 +2,7 @@ import { getStore } from "@netlify/blobs";
 import { claveObra } from "./models";
 import type { EventoExtraido } from "./models";
 import type { Credentials } from "google-auth-library";
+import { cifrar, descifrar, esValorCifrado, type ValorCifrado } from "./token-cifrado";
 
 /**
  * Persistencia con Netlify Blobs. Se eligió en vez de aprovisionar ya una base de datos
@@ -197,13 +198,23 @@ export interface ConfiguracionCorreo {
 
 const CLAVE_CONFIG_CORREO = "global";
 
+/** Forma guardada en Blobs: igual que ConfiguracionCorreo, pero `tokens` puede venir
+ * cifrado (lo normal) o en texto plano (valor guardado antes de introducir el cifrado —
+ * se sigue leyendo, y se sobreescribe cifrado en la siguiente escritura). */
+type ConfiguracionCorreoGuardada = Omit<ConfiguracionCorreo, "tokens"> & { tokens: Credentials | ValorCifrado };
+
 export async function obtenerConfiguracionCorreo(): Promise<ConfiguracionCorreo | null> {
-  const valor = await storeCorreoConfig().get(CLAVE_CONFIG_CORREO, { type: "json" });
-  return (valor as ConfiguracionCorreo | null) ?? null;
+  const valor = (await storeCorreoConfig().get(CLAVE_CONFIG_CORREO, {
+    type: "json",
+  })) as ConfiguracionCorreoGuardada | null;
+  if (!valor) return null;
+  const tokens = esValorCifrado(valor.tokens) ? descifrar<Credentials>(valor.tokens) : valor.tokens;
+  return { ...valor, tokens };
 }
 
 export async function guardarConfiguracionCorreo(config: ConfiguracionCorreo): Promise<void> {
-  await storeCorreoConfig().setJSON(CLAVE_CONFIG_CORREO, config);
+  const guardado: ConfiguracionCorreoGuardada = { ...config, tokens: cifrar(config.tokens) };
+  await storeCorreoConfig().setJSON(CLAVE_CONFIG_CORREO, guardado);
 }
 
 export async function desconectarCorreo(): Promise<void> {

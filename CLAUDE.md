@@ -70,7 +70,11 @@ es lo mínimo para no dejarla abierta a cualquiera.
   que el envío funcione (falla en silencio, solo con un log, mientras tanto). El texto de
   la respuesta ("Hola, Gonzalo: Ficha recibida, todo ok. Un abrazo.") lleva un nombre real
   a propósito — es quien manda las fichas, decisión explícita del usuario de dejarlo
-  fijo en el código en vez de en una variable de entorno.
+  fijo en el código en vez de en una variable de entorno. El token de OAuth se cifra en
+  reposo (AES-256-GCM, `lib/token-cifrado.ts`, clave en `GMAIL_TOKEN_ENCRYPTION_KEY`) —
+  `lib/store.ts` lo hace de forma transparente para quien llama; una config ya guardada en
+  texto plano (de antes de este cambio) se sigue leyendo igual, y se sobreescribe cifrada
+  sola en la siguiente escritura, sin script de migración aparte.
 - **No hay historial de eventos ni pantalla de estadísticas, a propósito**: existieron
   (`/estadisticas`, `guardarEventoHistorial` en `lib/store.ts`) y se quitaron — las
   estadísticas del negocio vivirán en otra app aparte. No reintroducir esa persistencia

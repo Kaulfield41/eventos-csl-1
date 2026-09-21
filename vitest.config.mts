@@ -8,6 +8,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["lib/**/*.test.ts"],
+    // Clave de prueba de 32 bytes (fija, no la real) para lib/token-cifrado.ts.
+    env: { GMAIL_TOKEN_ENCRYPTION_KEY: "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=" },
     coverage: {
       provider: "v8",
       include: ["lib/**/*.ts"],
