@@ -18,15 +18,19 @@ es lo mínimo para no dejarla abierta a cualquiera.
 
 - **Extracción por defecto es heurística, no IA** (`lib/extractor-heuristico.ts`):
   gratis, sin clave de ningún tipo. Detecta el título de cada parte del evento
-  combinando dos señales: un vocabulario bastante cerrado (`MOMENTOS_CONOCIDOS`) y,
-  una vez ya dentro del programa, que la línea completa esté en negrita en el
-  `.docx` original (`lib/docx.ts`, `LineaFicha.negrita`) — así se reconocen también
-  títulos reales que no están en la lista (confirmado contra fichas reales: "La Paz",
-  "Lecturas" con nombre de quien lee, "Condolencias y Salida"...). El color del
-  título no se usa como señal porque no es consistente entre fichas (solo la
-  negrita lo es). Los `.doc` antiguos no tienen negrita disponible
-  (`lib/doc-legacy.ts`), así que ahí sigue dependiendo solo del vocabulario. Y las
-  obras casi siempre llevan comillas/coma antes del compositor. Claude
+  combinando dos señales: un vocabulario bastante cerrado (`MOMENTOS_CONOCIDOS`) y que
+  la línea completa esté en negrita en el `.docx` original (`lib/docx.ts`,
+  `LineaFicha.negrita`) — así se reconocen también títulos reales que no están en la
+  lista, incluido el primer momento de la ficha (confirmado contra fichas reales: "La
+  Paz", "Recepción" a secas sin "de Invitados/feligreses" — bug real de producción,
+  2026-09-24 —, "Lecturas" con nombre de quien lee, "Condolencias y Salida"...). Las
+  únicas guardas reales contra falsos positivos son el filtro de líneas de cabecera
+  (`esLineaDeCabecera`) y el límite de 8 palabras — comprobado que ninguna nota/título
+  en negrita antes del programa, en las fichas reales de este proyecto, sobrevive a
+  esos dos filtros. El color del título no se usa como señal porque no es consistente
+  entre fichas (solo la negrita lo es). Los `.doc` antiguos no tienen negrita
+  disponible (`lib/doc-legacy.ts`), así que ahí sigue dependiendo solo del vocabulario.
+  Y las obras casi siempre llevan comillas/coma antes del compositor. Claude
   (`lib/extractor.ts`) solo entra si la persona pulsa "Afinar con IA" para una
   ficha en concreto — decisión explícita del usuario tras varias vueltas de
   conversación, no asumas que hace falta una clave de Anthropic para que la app

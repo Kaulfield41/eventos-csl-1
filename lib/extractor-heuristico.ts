@@ -119,22 +119,22 @@ function pareceObraConCompositor(lineaOriginal: string): boolean {
 }
 
 /**
- * `dentroDelPrograma` acota la señal de negrita a después de que ya haya arrancado el
- * programa musical (detectado por vocabulario, como antes): antes de eso, en la cabecera
- * de la ficha también puede haber texto en negrita (título del documento, datos en negrita
- * puntual...) que no es el título de ninguna parte, así que negrita sola no basta para
- * decidir dónde empieza el programa — solo para reconocer partes nuevas una vez ya dentro.
+ * La negrita también vale para detectar el PRIMER momento de la ficha, no solo los
+ * siguientes: una ficha real puede empezar directamente por un momento en negrita que no
+ * está en `MOMENTOS_CONOCIDOS` (ej. "Recepción" a secas, sin "de Invitados"/"de
+ * feligreses" — bug real visto en producción, antes se perdía junto con sus obras). El
+ * filtro de líneas de cabecera (`esLineaDeCabecera`, ya aplicado por el llamador antes de
+ * esta función) y el límite de 8 palabras son las guardas reales contra falsos positivos
+ * (título del documento, notas editoriales en negrita) — comprobado contra las fichas
+ * reales de este proyecto, donde ninguna nota/título en negrita antes del programa
+ * sobrevive a esos dos filtros.
  */
-function esMomento(
-  lineaOriginal: string,
-  normalizada: string,
-  opts: { negrita: boolean; dentroDelPrograma: boolean }
-): boolean {
+function esMomento(lineaOriginal: string, normalizada: string, negrita: boolean): boolean {
   if (CARACTERES_COMILLA.test(lineaOriginal)) return false;
   if (normalizada.split(" ").length > 8) return false;
   if (pareceObraConCompositor(lineaOriginal)) return false;
   if (pareceMomentoConocido(normalizada)) return true;
-  return opts.dentroDelPrograma && opts.negrita;
+  return negrita;
 }
 
 const MESES: Record<string, number> = {
@@ -179,7 +179,10 @@ function extraerCabecera(lineas: LineaFicha[]): { tipo_evento: string | null; fe
 
   for (const { texto: linea } of lineas) {
     const normalizada = normalizarLinea(linea);
-    if (esMomento(linea, normalizada, { negrita: false, dentroDelPrograma: false })) break; // ya terminó la cabecera
+    // Este bucle no pasa antes por el filtro de líneas de cabecera (a diferencia del bucle
+    // principal), así que aquí la negrita se ignora a propósito — solo el vocabulario cierra
+    // la cabecera, para no cortar la extracción de tipo_evento/fecha/hora antes de tiempo.
+    if (esMomento(linea, normalizada, false)) break; // ya terminó la cabecera
 
     if (tipo_evento === null && normalizada.startsWith("tipo de evento")) {
       const m = linea.match(/tipo de evento\s*:\s*(.+)/i);
@@ -252,11 +255,13 @@ export function extraerEventoHeuristico(lineas: LineaFicha[]): EventoExtraido {
     if (esLineaDeTabla(linea) || esFinDelPrograma(normalizada)) break;
     if (!dentroDelPrograma) {
       if (esLineaDeCabecera(normalizada)) continue;
-      if (!esMomento(linea, normalizada, { negrita: false, dentroDelPrograma: false })) continue; // sigue en la cabecera hasta el primer momento reconocido
+      // Ya pasado el filtro de cabecera: la negrita también puede marcar el primer
+      // momento de la ficha, igual que a cualquier otro (ver comentario de esMomento).
+      if (!esMomento(linea, normalizada, negrita)) continue;
       dentroDelPrograma = true;
     }
 
-    if (esMomento(linea, normalizada, { negrita, dentroDelPrograma })) {
+    if (esMomento(linea, normalizada, negrita)) {
       momentoActual = { nombre: linea, obras: [] };
       momentos.push(momentoActual);
     } else if (momentoActual) {

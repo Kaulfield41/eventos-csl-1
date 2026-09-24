@@ -80,14 +80,43 @@ describe("negrita dentro del programa — regresión: 'La Paz' (bug de esta sesi
     ]);
   });
 
-  it("una línea en negrita ANTES de que empiece el programa no se trata como momento", () => {
-    const evento = extraerEventoHeuristico([l("Boda de Prueba", true), l("Ofertorio")]);
-    expect(evento.momentos.map((m) => m.nombre)).toEqual(["Ofertorio"]);
-  });
-
   it("una línea no catalogada y sin negrita dentro del programa no crea un momento", () => {
     const evento = extraerEventoHeuristico([l("Ofertorio"), l("Algo cualquiera sin negrita")]);
     expect(evento.momentos).toHaveLength(1);
+  });
+});
+
+describe("negrita como PRIMER momento de la ficha — regresión: 'Recepción' (bug real de producción, 2026-09-24)", () => {
+  it("un momento no catalogado en negrita, como primera línea de la ficha, arranca el programa", () => {
+    // Bug real: una ficha cuyo primer momento era simplemente "Recepción" (sin "de
+    // Invitados"/"de feligreses", no está en MOMENTOS_CONOCIDOS) se perdía por completo,
+    // junto con sus obras, porque antes solo el vocabulario podía arrancar el programa —
+    // la negrita solo contaba para momentos DENTRO de un programa ya empezado.
+    const evento = extraerEventoHeuristico([
+      l("Recepción", true),
+      l("Aria de la Suite nº3 en Re mayor, J.S.Bach"),
+      l("Introito"),
+    ]);
+    expect(evento.momentos.map((m) => m.nombre)).toEqual(["Recepción", "Introito"]);
+    expect(evento.momentos[0].obras).toEqual([
+      { titulo: "Aria de la Suite nº3 en Re mayor", compositor: "J.S.Bach" },
+    ]);
+  });
+
+  it("una línea de cabecera en negrita (ej. la fila 'Componente') no arranca el programa", () => {
+    const evento = extraerEventoHeuristico([
+      l("Componente     Teléfono Vive en Zona", true),
+      l("Recepción", true),
+    ]);
+    expect(evento.momentos.map((m) => m.nombre)).toEqual(["Recepción"]);
+  });
+
+  it("una nota larga en negrita (más de 8 palabras) antes del programa no se confunde con un momento", () => {
+    const evento = extraerEventoHeuristico([
+      l("Que no suene nada muy triste durante toda la ceremonia por favor gracias", true),
+      l("Recepción de feligreses"),
+    ]);
+    expect(evento.momentos.map((m) => m.nombre)).toEqual(["Recepción de feligreses"]);
   });
 });
 
