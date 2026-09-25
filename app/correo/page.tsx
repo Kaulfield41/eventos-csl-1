@@ -14,6 +14,21 @@ interface EstadoCorreo {
   ultimaRevision?: string | null;
 }
 
+// El agente revisa 4 veces al día; más de 2 días sin novedad es anómalo. Cubre tanto un
+// fallo activo ahora mismo (errorEtiquetas) como uno que dejó de correr en silencio sin
+// que la propia llamada de prueba a Gmail fallara.
+const UMBRAL_DIAS_AVISO = 2;
+
+function calcularAvisoCaducidad(datos: EstadoCorreo): boolean {
+  const diasSinRevision = datos.ultimaRevision
+    ? (Date.now() - new Date(datos.ultimaRevision).getTime()) / 86_400_000
+    : null;
+  return (
+    !!datos.etiquetaId &&
+    (!!datos.errorEtiquetas || (diasSinRevision !== null && diasSinRevision > UMBRAL_DIAS_AVISO))
+  );
+}
+
 /**
  * Conectar la cuenta de Gmail del negocio y elegir qué etiqueta (y, opcionalmente,
  * qué prefijo de asunto) vigilar para detectar fichas nuevas automáticamente.
@@ -25,12 +40,14 @@ export default function Correo() {
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [dueno, setDueno] = useState<boolean | null>(null);
+  const [avisoCaducidad, setAvisoCaducidad] = useState(false);
 
   async function cargar() {
     const datos = (await fetch("/api/correo/estado").then((r) => r.json())) as EstadoCorreo;
     setEstado(datos);
     setEtiquetaId(datos.etiquetaId ?? "");
     setPrefijoAsunto(datos.prefijoAsunto ?? "");
+    setAvisoCaducidad(calcularAvisoCaducidad(datos));
   }
 
   useEffect(() => {
@@ -109,7 +126,19 @@ export default function Correo() {
             </button>
           </div>
 
-          {estado.errorEtiquetas && <p className="text-sm text-red-600">Error leyendo etiquetas: {estado.errorEtiquetas}</p>}
+          {avisoCaducidad && (
+            <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+              <p className="font-semibold">El agente de correo puede no estar revisando el buzón.</p>
+              <p className="mt-1">
+                {estado.errorEtiquetas
+                  ? `Error leyendo etiquetas: ${estado.errorEtiquetas}`
+                  : `Han pasado más de ${UMBRAL_DIAS_AVISO} días desde la última revisión.`}{" "}
+                Suele deberse a que el token de Gmail caducó (las apps en modo &quot;Prueba&quot; de
+                Google caducan a los 7 días) — pulsa &quot;Desconectar&quot; y vuelve a conectar la
+                cuenta más abajo.
+              </p>
+            </div>
+          )}
 
           <label className="flex flex-col gap-1 text-sm">
             Etiqueta de Gmail a vigilar
