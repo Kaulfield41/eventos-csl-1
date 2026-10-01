@@ -60,16 +60,24 @@ const MOMENTOS_CONOCIDOS = [
 // (firma del negocio) con el que terminan las fichas reales usadas para probar esto —
 // quitarlo rompería la detección de fin de programa en esos documentos.
 const MARCADORES_FIN_PROGRAMA = ["notas", "alborada eventos musicales", "organiza"];
+// Sin ":" a propósito: normalizarLinea() quita toda la puntuación (incluidos los dos
+// puntos) antes de comparar, así que una marca con ":" literal (p.ej. la "oficia:" de
+// antes de este cambio) nunca podía hacer match — bug real que dejaba pasar como
+// "momento" cualquier línea de cabecera en negrita no cubierta por el límite de 8
+// palabras (ver "ofici" más abajo). "ofici" (sin terminar la palabra) a propósito,
+// para cubrir "Oficia:", "Oficiará", "Oficiante(s)" con la misma marca — comprobado
+// contra las 18 fichas reales de este proyecto (agosto–octubre 2026) que ninguna
+// línea real de programa/obra empieza por ninguna de estas raíces.
 const MARCADORES_CABECERA = [
   "tipo de evento",
-  "dia:",
-  "lugar:",
-  "oficia:",
-  "parroco:",
-  "sacristan:",
-  "colocacion:",
+  "dia",
+  "lugar",
+  "ofici",
+  "parroco",
+  "sacristan",
+  "colocacion",
   "componente",
-  "cita:",
+  "cita",
   "calle",
   "tlf",
 ];
@@ -84,8 +92,11 @@ function normalizarLinea(linea: string): string {
     .trim();
 }
 
+// Solo startsWith (antes también includes): en las fichas reales, estos campos de
+// cabecera siempre encabezan la línea — includes() solo añadía riesgo de falso
+// positivo a mitad de una línea de programa sin ningún caso real que lo necesitara.
 function esLineaDeCabecera(normalizada: string): boolean {
-  return MARCADORES_CABECERA.some((m) => normalizada.startsWith(m) || normalizada.includes(m));
+  return MARCADORES_CABECERA.some((m) => normalizada.startsWith(m));
 }
 
 function esFinDelPrograma(normalizada: string): boolean {
@@ -223,9 +234,22 @@ function terminaComoNombre(texto: string): boolean {
   return letra === letra.toUpperCase() && letra !== letra.toLowerCase();
 }
 
+/**
+ * El filtro de minúscula inicial (`empiezaEnMinuscula`) solo se aplica cuando la línea
+ * NO tiene forma de "título, compositor" — regresión real (2026-10-01): "4 vellos
+ * mariñeiros, Popular Viveiro, Lugo" se perdía entera por empezar en minúscula, aunque
+ * el compositor/procedencia ("Lugo") sí parece un nombre real. Antes el filtro se
+ * aplicaba el primero de todos y descartaba la línea sin mirar si tenía coma. Sigue
+ * descartando (vía `empiezaEnMinuscula`, más abajo) el caso que motivó el filtro
+ * originalmente: una nota sin coma que continúa la frase de la línea anterior (ver
+ * "pasará a interpretarse como primera de las firmas)", misma sesión). Límite conocido
+ * y no resuelto aquí: una obra con coma cuyo compositor/colectivo también está mal
+ * escrito en minúscula en la ficha original (ej. "son do ar, Luar na lubre" — el grupo
+ * real es "Luar na Lúbre") sigue sin reconocerse, porque `terminaComoNombre` no puede
+ * distinguir eso de un descarte real como "Preludio, para violín y piano"; solo se
+ * arregla a mano en la ficha o con "Afinar con IA".
+ */
 function partirObra(lineaOriginal: string): ObraExtraida | null {
-  if (empiezaEnMinuscula(lineaOriginal)) return null; // continuación de una frase, no una obra
-
   // Quita paréntesis finales tipo "(Instrumental)", que no forman parte del título/compositor.
   const sinParentesisFinal = lineaOriginal.replace(/\s*\([^)]*\)\s*$/, "").trim();
 
@@ -238,6 +262,8 @@ function partirObra(lineaOriginal: string): ObraExtraida | null {
     const titulo = comillas ? comillas[1] : partes.slice(0, -1).join(", ");
     return { titulo, compositor };
   }
+
+  if (empiezaEnMinuscula(lineaOriginal)) return null; // continuación de una frase, no una obra
 
   return { titulo: comillas ? comillas[1] : sinParentesisFinal, compositor: null };
 }

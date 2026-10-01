@@ -120,6 +120,35 @@ describe("negrita como PRIMER momento de la ficha — regresión: 'Recepción' (
   });
 });
 
+describe("MARCADORES_CABECERA — regresión: 'Oficiará D. Pablo' (bug real de producción, 2026-10-01)", () => {
+  it("una línea de cabecera en negrita que conjuga 'oficia' (ej. 'Oficiará') no arranca el programa", () => {
+    // Bug real: "OFICIARÁ D. Pablo ( es gallego)" (negrita, ≤8 palabras) no estaba
+    // cubierta por la marca "oficia:" porque normalizarLinea() quita los dos puntos
+    // antes de comparar, así que esa marca con ":" nunca hacía match. Se colaba como
+    // primer momento, y la línea siguiente ("Gaita Gallega: Rafael Carracedo", un
+    // intérprete, no una obra) se añadía como su "obra".
+    const evento = extraerEventoHeuristico([
+      l("Oficiará D. Pablo (es gallego)", true),
+      l("Gaita Gallega: Rafael Carracedo"),
+      l("Recepción de feligreses", true),
+      l("Cerca de ti, Señor, L.Masson"),
+    ]);
+    expect(evento.momentos.map((m) => m.nombre)).toEqual(["Recepción de feligreses"]);
+    expect(evento.momentos[0].obras).toEqual([
+      { titulo: "Cerca de ti, Señor", compositor: "L.Masson" },
+    ]);
+  });
+
+  it("las marcas de cabecera con ':' en la ficha real siguen cortando aunque la línea no esté en negrita", () => {
+    const evento = extraerEventoHeuristico([
+      l("Día: 1 de octubre de 2026"),
+      l("Oficia: D. Pablo"),
+      l("Ofertorio"),
+    ]);
+    expect(evento.momentos.map((m) => m.nombre)).toEqual(["Ofertorio"]);
+  });
+});
+
 describe("pareceObraConCompositor — regresión: 'Aleluya, Misa Coral en Re, F. Palazón' (bug de esta sesión)", () => {
   it("una obra titulada igual que un momento (con compositor) no se confunde con el momento", () => {
     const evento = extraerEventoHeuristico([
@@ -187,6 +216,45 @@ describe("partirObra (vía extraerEventoHeuristico, dentro de un momento abierto
   it("si el 'compositor' deducido no acaba pareciendo un nombre, la obra se descarta", () => {
     const evento = extraerEventoHeuristico([l("Ofertorio"), l("Preludio, para violín y piano")]);
     expect(evento.momentos[0].obras).toEqual([]);
+  });
+
+  describe("título que empieza en minúscula pero sí tiene forma de 'título, compositor' — regresión: '4 vellos mariñeiros' (bug real de producción, 2026-10-01)", () => {
+    it("se reconoce igual, porque el filtro de minúscula ya no se aplica antes de mirar si hay coma", () => {
+      // Bug real: "4 vellos mariñeiros, Popular Viveiro, Lugo" se perdía entera porque
+      // antes `empiezaEnMinuscula` se comprobaba el primero de todos, antes de mirar si
+      // la línea tenía forma de "título, compositor" — aunque "Lugo" sí acaba pareciendo
+      // un nombre real.
+      const evento = extraerEventoHeuristico([
+        l("Condolencias y Salida", true),
+        l("4 vellos mariñeiros, Popular Viveiro, Lugo"),
+      ]);
+      expect(evento.momentos[0].obras).toEqual([
+        { titulo: "4 vellos mariñeiros, Popular Viveiro", compositor: "Lugo" },
+      ]);
+    });
+
+    it("una continuación real sin coma se sigue descartando (el motivo original del filtro)", () => {
+      // Caso real: una nota de cabecera partida en dos párrafos por Word, donde el
+      // segundo empieza en minúscula sin coma ("...pasará a interpretarse como primera
+      // de las firmas)"). Sin coma, el filtro de minúscula sigue aplicando.
+      const evento = extraerEventoHeuristico([
+        l("Ofertorio"),
+        l("pasará a interpretarse como primera de las firmas)"),
+      ]);
+      expect(evento.momentos[0].obras).toEqual([]);
+    });
+
+    it("límite conocido, no resuelto aquí: si el compositor/colectivo real también está mal escrito en minúscula en la ficha, sigue sin reconocerse", () => {
+      // "son do ar, Luar na lubre": el grupo real es "Luar na Lúbre", pero en esta ficha
+      // concreta está escrito con minúscula ("lubre") — terminaComoNombre no puede
+      // distinguir esto de un descarte real como "Preludio, para violín y piano". Se
+      // deja documentado a propósito como límite conocido, no como bug pendiente.
+      const evento = extraerEventoHeuristico([
+        l("Condolencias y Salida", true),
+        l("son do ar, Luar na lubre"),
+      ]);
+      expect(evento.momentos[0].obras).toEqual([]);
+    });
   });
 });
 
